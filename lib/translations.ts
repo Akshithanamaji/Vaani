@@ -99,6 +99,10 @@ export interface TranslationKeys {
     micAccessDenied: string;
     securityError: string;
     invalidInput: string;
+    tooManyDigits: string;
+    tooFewDigits: string;
+    invalidEmailFormat: string;
+    enterExactly: string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -200,6 +204,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'Microphone access denied. Please check your browser settings.',
         securityError: 'Security error. Please use HTTPS or localhost.',
         invalidInput: 'Invalid input. Please try again.',
+        tooManyDigits: 'Too many digits. Please enter correctly.',
+        tooFewDigits: 'Too few digits. Please enter correctly.',
+        invalidEmailFormat: 'Invalid email format. Please enter a correct email address.',
+        enterExactly: 'Please enter exactly {COUNT} digits.',
     },
     hi: {
         title: 'वॉयस-पावर्ड सरकारी फॉर्म',
@@ -299,6 +307,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'माइक्रोफ़ोन एक्सेस अस्वीकृत। कृपया अपनी ब्राउज़र सेटिंग्स जांचें।',
         securityError: 'सुरक्षा त्रुटि। कृपया HTTPS या localhost का उपयोग करें।',
         invalidInput: 'अमान्य इनपुट। कृपया पुनः प्रयास करें।',
+        tooManyDigits: 'बहुत अधिक अंक। कृपया सही ढंग से दर्ज करें।',
+        tooFewDigits: 'बहुत कम अंक। कृपया सही ढंग से दर्ज करें।',
+        invalidEmailFormat: 'अमान्य ईमेल प्रारूप। कृपया सही ईमेल पता दर्ज करें।',
+        enterExactly: 'कृपया ठीक {COUNT} अंक दर्ज करें।',
     },
     te: {
         title: 'వాయిస్-ఆధారిత ప్రభుత్వ ఫారమ్‌లు',
@@ -398,6 +410,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'మైక్రోఫోన్ యాక్సెస్ తిరస్కరించబడింది। దయచేసి మీ బ్రౌజర్ సెట్టింగ్‌లను తనిఖీ చేయండి।',
         securityError: 'భద్రతా లోపం। దయచేసి HTTPS లేదా localhost ఉపయోగించండి।',
         invalidInput: 'చెల్లని ఇన్‌పుట్. దయచేసి మళ్ళీ ప్రయత్నించండి.',
+        tooManyDigits: 'చాలా అంకెలు ఉన్నాయి. దయచేసి సరిగ్గా నమోదు చేయండి.',
+        tooFewDigits: 'చాలా తక్కువ అంకెలు ఉన్నాయి. దయచేసి సరిగ్గా నమోదు చేయండి.',
+        invalidEmailFormat: 'చెల్లని ఈమెయిల్ ఫార్మాట్. దయచేసి సరైన ఈమెయిల్ చిరునామాను అందిచండి.',
+        enterExactly: 'దయచేసి సరిగ్గా {COUNT} అంకెలను నమోదు చేయండి.',
     },
     kn: {
         title: 'ವಾಯಿಸ್-ಆಧಾರಿತ ಸರ್ಕಾರಿ ಫಾರ್ಮ್‌ಗಳು',
@@ -497,6 +513,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'ಮೈಕ್ರೋಫೋನ್ ಪ್ರವೇಶ ನಿರಾಕರಿಸಲಾಗಿದೆ। ದಯವಿಟ್ಟು ನಿಮ್ಮ ಬ್ರೌಸರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ।',
         securityError: 'ಭದ್ರತಾ ದೋಷ। ದಯವಿಟ್ಟು HTTPS ಅಥವಾ localhost ಬಳಸಿ।',
         invalidInput: 'ಅಮಾನ್ಯ ಇನ್‌ಪುಟ್. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+        tooManyDigits: 'ಹೆಚ್ಚಿನ ಅಂಕೆಗಳು. ದಯವಿಟ್ಟು ಸರಿಯಾಗಿ ನಮೂದಿಸಿ.',
+        tooFewDigits: 'ತುಂಬಾ ಕಡಿಮೆ ಅಂಕೆಗಳು. ದಯವಿಟ್ಟು ಸರಿಯಾಗಿ ನಮೂದಿಸಿ.',
+        invalidEmailFormat: 'ಅಮಾನ್ಯ ಇಮೇಲ್ ಫಾರ್ಮ್ಯಾಟ್. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ.',
+        enterExactly: 'ದಯವಿಟ್ಟು ಸರಿಯಾಗಿ {COUNT} ಅಂಕೆಗಳನ್ನು ನಮೂದಿಸಿ.',
     },
     ta: {
         title: 'குரல் சக்தியால் கட்டப்பட்ட அரசாங்க ஆவணங்கள்',
@@ -596,6 +616,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'மைக்ரஃபோன் அணுகல் மறுக்கப்பட்டது। தயவுசெய்து உங்கள் உலாவி அமைப்புகளைச் சரிபார்க்கவும்।',
         securityError: 'பாதுகாப்பு பிழை। தயவுசெய்து HTTPS அல்லது localhost ஐப் பயன்படுத்தவும்।',
         invalidInput: 'தவறான உள்ளீடு. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.',
+        tooManyDigits: 'அதிகப்படியான இலக்கங்கள். தயவுசெய்து சரியாக உள்ளிடவும்.',
+        tooFewDigits: 'மிகக் குறைவான இலக்கங்கள். தயவுசெய்து சரியாக உள்ளிடவும்.',
+        invalidEmailFormat: 'தவறான மின்னஞ்சல் வடிவம். சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.',
+        enterExactly: 'தயவுசெய்து சரியாக {COUNT} இலக்கங்களை உள்ளிடவும்.',
     },
     ml: {
         title: 'കണ്ഠസ്വര ആധാരിത സരകാരി ഫോമുകൾ',
@@ -695,6 +719,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'മൈക്രോഫോൺ ആക്‌സസ്സ് നിഷേധിച്ചു। ദയവായി നിങ്ങളുടെ ബ്രൗസർ ക്രമീകരണങ്ങൾ പരിശോധിക്കുക।',
         securityError: 'സുരക്ഷാ പിശക്। ദയവായി HTTPS അല്ലെങ്കിൽ localhost ഉപയോഗിക്കുക।',
         invalidInput: 'അസാധുവായ ഇൻപുട്ട്. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+        tooManyDigits: 'അക്കങ്ങൾ കൂടുതലാണ്. ദയവായി ശരിയായി നൽകുക.',
+        tooFewDigits: 'അക്കങ്ങൾ കുറവാണ്. ദಯവായി ശരിയായി നൽകുക.',
+        invalidEmailFormat: 'അസാധുവായ ഇമെയിൽ വിലാസം. ദയവായി ശരിയായ ഇമെയിൽ നൽകുക.',
+        enterExactly: 'ദയവായി കൃത്യം {COUNT} അക്കങ്ങൾ നൽകുക.',
     },
     mr: {
         title: 'वॉयस-पावर्ड सरकारी फॉर्म',
@@ -794,6 +822,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'मायक्रोफोन प्रवेश नाकारला। कृपया तुमची ब्राउझर सेटिंग्ज तपासा।',
         securityError: 'सुरक्षा त्रुटी। कृपया HTTPS किंवा localhost वापरा।',
         invalidInput: 'अमान्य इनपुट. कृपया पुन्हा प्रयत्न करा.',
+        tooManyDigits: 'जास्त अंक आहेत. कृपया नीट प्रविष्ट करा.',
+        tooFewDigits: 'खूप कमी अंक आहेत. कृपया नीट प्रविष्ट करा.',
+        invalidEmailFormat: 'अवैध ईमेल स्वरूप. कृपया योग्य ईमेल पत्ता प्रविष्ट करा.',
+        enterExactly: 'कृपया नक्की {COUNT} अंक प्रविष्ट करा.',
     },
     bn: {
         title: 'বাণী AI পোর্টাল',
@@ -893,6 +925,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'মাইক্রোফোন অ্যাক্সেস অস্বীকৃত। দয়া করে আপনার ব্রাউজার সেটিংস পরীক্ষা করুন।',
         securityError: 'নিরাপত্তা ত্রুটি। দয়া করে HTTPS বা localhost ব্যবহার করুন।',
         invalidInput: 'অকার্যকর ইনপুট। দয়া করে আবার চেষ্টা করুন।',
+        tooManyDigits: 'অত্যধিক সংখ্যা। অনুগ্রহ করে সঠিকভাবে লিখুন।',
+        tooFewDigits: 'খুব কম সংখ্যা। অনুগ্রহ করে সঠিকভাবে লিখুন।',
+        invalidEmailFormat: 'ভুল ইমেল ফরম্যাট। সঠিক ইমেল ঠিকানা লিখুন।',
+        enterExactly: 'অনুগ্রহ করে ঠিক {COUNT}টি সংখ্যা লিখুন।',
     },
     gu: {
         title: 'વાણી AI પોર્ટલ',
@@ -992,6 +1028,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'માઇક્રોફોન ઍક્સેસ નકારી કાઢવામાં આવી। કૃપા કરીને તમારી ব্રાઉજર સેટિંગ્સ તપાસો।',
         securityError: 'સુરક્ષા ભૂલ। કૃપા કરીને HTTPS અથવા localhost નો ઉપયોગ કરો।',
         invalidInput: 'અમાન્ય ઇનપુટ. કૃપા કરીને ફરીથી પ્રયત્ન કરો.',
+        tooManyDigits: 'ખૂબ વધારે અંક. કૃપા કરીને સાચી રીતે લખો.',
+        tooFewDigits: 'ખૂબ ઓછા અંક. કૃપા કરીને સાચી રીતે લખો.',
+        invalidEmailFormat: 'અમાન્ય ઇમેઇલ ફોર્મેટ. કૃપા કરીને સાચું ઇમેઇલ સરનામું લખો.',
+        enterExactly: 'કૃપા કરીને બરાબર {COUNT} અંક લખો.',
     },
     or: {
         title: 'ବାଣୀ AI ପୋର୍ଟାଲ୍',
@@ -1091,6 +1131,10 @@ export const translations: Record<string, TranslationKeys> = {
         micAccessDenied: 'ମାଇକ୍ରୋଫୋନ୍ ଆକ୍ସେସ୍ ପ୍ରତ୍ୟାଖ୍ୟାନ କରାଯାଇଛି। ଦୟାକରି ଆପଣଙ୍କର ବ୍ରାଉଜର ସେଟିଂସ୍ ଯାଞ୍ଚ କରନ୍ତୁ।',
         securityError: 'ସୁରକ୍ଷା ତ୍ରୁଟି। ଦୟାକରି HTTPS କିମ୍ବା localhost ବ୍ୟବହାର କରନ୍ତୁ।',
         invalidInput: 'ଅବୈଧ ଇନପୁଟ୍। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
+        tooManyDigits: 'ଅଧିକ ଅଙ୍କ। ଦୟାକରି ସଠିକ୍ ଭାବରେ ପ୍ରବେଶ କରନ୍ତୁ।',
+        tooFewDigits: 'ଅତି କମ୍ ଅଙ୍କ। ଦୟାକରି ସଠିକ୍ ଭାବରେ ପ୍ରବେଶ କରନ୍ତୁ।',
+        invalidEmailFormat: 'ଅବୈଧ ଇମେଲ୍ ଫର୍ମାଟ୍। ଦୟାକରି ଏକ ସଠିକ୍ ଇମେଲ୍ ଠିକଣա ପ୍ରବେଶ କରନ୍ତୁ।',
+        enterExactly: 'ଦୟାକରି ଠିକ୍ {COUNT} ଅଙ୍କ ପ୍ରବେଶ କରନ୍ତୁ।',
     },
     pa: {
         title: 'ਵਾਣੀ AI ਪੋਰਟਲ',
@@ -1189,7 +1233,11 @@ export const translations: Record<string, TranslationKeys> = {
         couldNotStartMic: 'ਮਾਈਕ੍ਰੋਫੋਨ ਸ਼ੁਰੂ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਰਿਫ੍ਰੈਸ਼ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
         micAccessDenied: 'ਮਾਈਕ੍ਰੋਫੋਨ ਪਹੁੰਚ ਅਸਵੀਕਾਰ ਕੀਤੀ ਗਈ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀਆਂ ਬ੍ਰਾਊਜ਼ਰ ਸੈਟਿੰਗਾਂ ਦੀ ਜਾਂਚ ਕਰੋ।',
         securityError: 'ਸੁਰੱਖਿਆ ਤ੍ਰੁੱਟੀ। ਕਿਰਪਾ ਕਰਕੇ HTTPS ਜਾਂ localhost ਵਰਤੋਂ।',
-        invalidInput: 'ਅਮਾਨਯ ਇਨਪੁਟ. ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+        invalidInput: 'ਅਮਾਨਯ ਇਨਪੁਟ. ਕਿਰਪา ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+        tooManyDigits: 'ਬਹੁਤ ਜ਼ਿਆਦਾ ਅੰਕ। ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਢੰਗ ਨਾਲ ਦਰਜ ਕਰੋ।',
+        tooFewDigits: 'ਬਹੁਤ ਘੱਟ ਅੰਕ। ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਢੰਗ ਨਾਲ ਦਰਜ ਕਰੋ।',
+        invalidEmailFormat: 'ਗਲਤ ਈਮੇਲ ਫਾਰਮੈਟ। ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ।',
+        enterExactly: 'ਕਿਰਪਾ ਕਰਕੇ ਠੀਕ {COUNT} ਅੰਕ ਦਰਜ ਕਰੋ।',
     },
     ur: {
         title: 'وانی AI پورٹل',

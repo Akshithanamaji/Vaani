@@ -142,12 +142,17 @@ function playChunk(chunk: string, langCode: string): Promise<void> {
     const proxyUrl = `/api/tts-proxy?text=${encodedText}&lang=${langCode}`;
 
     if (globalAudioInstance) {
-      globalAudioInstance.pause();
-      globalAudioInstance.currentTime = 0;
+      try {
+        globalAudioInstance.pause();
+        globalAudioInstance.currentTime = 0;
+        globalAudioInstance.removeAttribute('src');
+        globalAudioInstance.load();
+      } catch { /* ignore */ }
     }
 
     const audio = new Audio(proxyUrl);
     globalAudioInstance = audio;
+    audio.volume = 1.0;
 
     audio.onended = () => resolve();
     audio.onerror = (err) => {
@@ -155,6 +160,11 @@ function playChunk(chunk: string, langCode: string): Promise<void> {
       resolve(); // Continue to next chunk even on error
     };
     audio.play().catch((err) => {
+      const errString = String(err);
+      if (err?.name === 'AbortError' || errString.includes('AbortError') || errString.includes('interrupted by a call to pause')) {
+        resolve();
+        return;
+      }
       console.error(`[GoogleTTS] Playback error:`, err);
       resolve();
     });
@@ -162,9 +172,16 @@ function playChunk(chunk: string, langCode: string): Promise<void> {
 }
 
 /**
- * Play text using Google Translate TTS via server proxy.
- * Automatically splits long text into ≤190-char chunks to stay within
- * Google TTS character limits and avoid 400 errors.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * SINGLE TTS ENGINE — Google Translate TTS (via /api/tts-proxy)
+ * All voice output in the entire app goes through this function so the
+ * voice tone is identical everywhere (language selector, voice form,
+ * service selector, QR display, email-auth, AI chatbot, location selector).
+ *
+ * The browser's Web Speech API is intentionally NOT used for TTS output.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * For Odia and other unsupported languages, falls back to English.
  */
 async function speakWithGoogleTTS(
   text: string,
@@ -175,13 +192,13 @@ async function speakWithGoogleTTS(
     return;
   }
 
-  const langCode = language.split("-")[0];
+  let langCode = language.split("-")[0];
 
+  // Fall back to English for languages not supported by Google TTS
   if (!GOOGLE_TTS_SUPPORTED_LANGUAGES.has(langCode)) {
-    console.warn(
-      `[GoogleTTS] Language '${langCode}' is not supported by Google TTS, skipping`,
-    );
-    return;
+    const fallbacks = TTS_FALLBACK_LANGUAGES[langCode];
+    langCode = fallbacks?.[0] ?? "en";
+    console.warn(`[GoogleTTS] Language not supported, falling back to '${langCode}'`);
   }
 
   ttsStopRequested = false;
@@ -509,180 +526,40 @@ function getVoiceSettings(language: string) {
 }
 
 /**
- * Text-to-Speech utility with proper voice selection and Google TTS fallback
- * Prioritizes browser TTS for languages not supported by Google (like Odia)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * PUBLIC TTS API — always uses Google Translate TTS so the voice tone is
+ * IDENTICAL across every section of the app.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Call speakText(text, language) anywhere — the same warm Google voice will
+ * be heard in the language selector, voice form, service selector, QR display,
+ * email-auth, AI chatbot and location selector.
  */
 export function speakText(
   text: string,
   language: string = "en-IN",
 ): Promise<void> {
-  return new Promise(async (resolve) => {
-    if (typeof window === "undefined") {
-      console.warn("[Voice] Window not available");
-      resolve();
-      return;
-    }
-
-    if (!text || text.trim().length === 0) {
-      resolve();
-      return;
-    }
-
-    // Ensure language is a valid string
-    const validLanguage =
-      typeof language === "string" && language.length > 0 ? language : "en-IN";
-    const langCode = validLanguage.split("-")[0];
-    const isGoogleSupported = isGoogleTTSSupported(validLanguage);
-
-    try {
-      // Check if speech synthesis is available
-      if (!window.speechSynthesis) {
-        if (isGoogleSupported) {
-          console.log(
-            "[Voice] Speech Synthesis not available, using Google TTS",
-          );
-          return speakWithGoogleTTS(text, validLanguage).then(resolve);
-        } else {
-          console.warn(
-            `[Voice] Speech Synthesis not available and Google TTS doesn't support ${validLanguage}`,
-          );
-          // Try fallback language with Google TTS
-          const fallbackLang = getTTSFallbackLanguage(validLanguage);
-          if (fallbackLang && isGoogleTTSSupported(fallbackLang)) {
-            console.log(`[Voice] Using fallback language: ${fallbackLang}`);
-            return speakWithGoogleTTS(text, fallbackLang).then(resolve);
-          }
-          resolve();
-          return;
-        }
-      }
-
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-
-      // Ensure voices are loaded
-      await initializeVoices();
-
-      // Get available voices
-      const voices = window.speechSynthesis.getVoices();
-
-      // Check if we have a browser voice for this language
-      const hasVoiceForLanguage = voices.some((v: any) =>
-        v.lang.toLowerCase().startsWith(langCode.toLowerCase()),
-      );
-
-      // Try browser TTS first for the requested language
-      if (hasVoiceForLanguage) {
-        console.log(
-          `[Voice] Found browser voice for ${validLanguage}, using browser TTS`,
-        );
-
-        const voice = getBestVoiceForLanguage(validLanguage);
-        const settings = getVoiceSettings(validLanguage);
-
-        console.log(
-          `[Voice] Speaking in ${validLanguage}, using voice:`,
-          voice?.name || "default",
-          voice?.lang || "unknown",
-        );
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = validLanguage;
-        utterance.rate = settings.rate;
-        utterance.pitch = settings.pitch;
-        utterance.volume = settings.volume;
-
-        if (voice) {
-          utterance.voice = voice;
-          console.log(`[Voice] Voice set to: ${voice.name} (${voice.lang})`);
-        }
-
-        utterance.onend = () => {
-          console.log(`[Voice] Speech completed for ${validLanguage}`);
-          resolve();
-        };
-
-        utterance.onerror = (event: any) => {
-          if (event.error === "interrupted") {
-            resolve();
-            return;
-          }
-
-          console.error(
-            `[Voice] Browser TTS error for ${validLanguage}:`,
-            event.error,
-          );
-
-          // Try Google TTS as fallback if supported
-          if (isGoogleSupported) {
-            console.log("[Voice] Falling back to Google TTS");
-            speakWithGoogleTTS(text, validLanguage).then(resolve);
-          } else {
-            // Try fallback language
-            const fallbackLang = getTTSFallbackLanguage(validLanguage);
-            if (fallbackLang) {
-              console.log(`[Voice] Trying fallback language: ${fallbackLang}`);
-              speakText(text, fallbackLang).then(resolve);
-            } else {
-              resolve();
-            }
-          }
-        };
-
-        window.speechSynthesis.speak(utterance);
-        return;
-      }
-
-      // No browser voice - try Google TTS if supported
-      if (isGoogleSupported) {
-        console.log(
-          `[Voice] No browser voice for ${validLanguage}, using Google TTS`,
-        );
-        return speakWithGoogleTTS(text, validLanguage).then(resolve);
-      }
-
-      // Neither browser nor Google supports this language - try fallback
-      const fallbackLang = getTTSFallbackLanguage(validLanguage);
-      if (fallbackLang) {
-        console.log(
-          `[Voice] ${validLanguage} not supported, trying fallback: ${fallbackLang}`,
-        );
-        return speakText(text, fallbackLang).then(resolve);
-      }
-
-      console.warn(
-        `[Voice] No TTS available for ${validLanguage} and no fallback found`,
-      );
-      resolve();
-    } catch (e) {
-      console.error("[Voice] Error in speakText:", e);
-
-      // Try Google TTS as fallback only if supported
-      if (isGoogleSupported) {
-        console.log("[Voice] Falling back to Google TTS due to exception");
-        speakWithGoogleTTS(text, validLanguage).then(resolve);
-      } else {
-        console.warn(
-          `[Voice] Cannot fallback - ${validLanguage} not supported by Google TTS`,
-        );
-        resolve();
-      }
-    }
-  });
+  if (typeof window === "undefined" || !text || text.trim().length === 0) {
+    return Promise.resolve();
+  }
+  const validLanguage =
+    typeof language === "string" && language.length > 0 ? language : "en-IN";
+  console.log(`[Voice] speakText → Google TTS, lang=${validLanguage}, chars=${text.length}`);
+  return speakWithGoogleTTS(text, validLanguage);
 }
 
 /**
- * Stop text-to-speech
+ * Stop text-to-speech (stops the shared Google TTS audio stream)
  */
 export function stopSpeaking(): void {
-  // Signal the chunked TTS loop to stop after the current chunk
   ttsStopRequested = true;
-  if (typeof window !== "undefined" && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
   if (globalAudioInstance) {
-    globalAudioInstance.pause();
-    globalAudioInstance.currentTime = 0;
+    try {
+      globalAudioInstance.pause();
+      globalAudioInstance.currentTime = 0;
+      globalAudioInstance.removeAttribute('src');
+      globalAudioInstance.load();
+    } catch { /* ignore */ }
   }
   console.log("[Voice] Speech stopped");
 }

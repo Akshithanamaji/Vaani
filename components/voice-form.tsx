@@ -7,23 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FileUpload } from '@/components/file-upload';
 import {
-  initVoiceRecognition,
-  startVoiceRecording,
-  stopVoiceRecording,
-  abortVoiceRecording,
   speakText,
   stopSpeaking,
   getFieldDescription,
-  setRecognitionLanguage,
-  transcribeWithGroqWhisper,
-  type VoiceRecognitionResult,
 } from '@/lib/voice-utils';
-import { createQRSubmission, generateQRImageUrl } from '@/lib/qr-utils';
 import { GOVERNMENT_SERVICES, getTranslatedService } from '@/lib/government-services';
 import { translations } from '@/lib/translations';
 import { FIELD_TRANSLATIONS } from '@/lib/field-translations';
-import { useAudioRecorder } from '@/lib/audio-recorder';
 import { runSmartValidation, type ValidationIssue } from '@/lib/smart-validation';
+import { useAutoVoice, LISTENING_LABELS } from '@/lib/auto-voice-engine';
 import QRDisplay from './qr-display';
 
 interface VoiceFormProps {
@@ -49,163 +41,171 @@ interface BackendResponse {
 const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLocation, onSubmitSuccess, onSubmit, onBack }: VoiceFormProps) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
-  const [interim, setInterim] = useState('');
   const [isReviewing, setIsReviewing] = useState(false);
   const [submittedQR, setSubmittedQR] = useState<any>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [backendResponse, setBackendResponse] = useState<string | null>(null);
-  // Use Web Speech API as primary — it works natively in Chrome for all Indian languages
-  // Groq Whisper is used as fallback when Web Speech API is not available
-  const [useGroqWhisper] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const hasWebSpeech = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
-    return !hasWebSpeech; // Only use Groq if Web Speech API is unavailable
-  });
-  const [shouldTranscribeBlob, setShouldTranscribeBlob] = useState(false);
-  const [listeningStatus, setListeningStatus] = useState<'idle' | 'listening' | 'processing'>('idle');
 
   // ── Smart Validation state ────────────────────────────────────────────────
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [validationDone, setValidationDone] = useState(false);
   const [aiValidationDone, setAiValidationDone] = useState(false);
-  const [fileValidated, setFileValidated] = useState(false); // AI file validation gate
-
-  // Audio recording with Groq Whisper
-  const { isRecording, recordingTime, audioBlob, startRecording, stopRecording, resetRecording } = useAudioRecorder();
-
-  // Fallback to Web Speech API
-  const recognitionRef = useRef<any | null>(null);
-
-  // ── Capture the active field + language AT THE MOMENT recording starts ────
-  // This prevents stale-closure bugs where currentFieldIndex changes before
-  // the async transcription resolves and saves to the wrong field.
-  const recordingContextRef = useRef<{ fieldId: string; fieldIndex: number; language: string } | null>(null);
+  const [fileValidated, setFileValidated] = useState(false);
 
   const fields = service?.fields || [];
   const currentField = fields[currentFieldIndex];
 
-  // Get translation strings for current language
   const langCode = (typeof language === 'string' ? language.split('-')[0] : 'en');
   const t = translations[langCode] || translations['en'];
-
-  // Get translated service name and description
   const translatedService = service ? getTranslatedService(service, langCode) : service;
 
-  // Helper function to get translated field label
   const getFieldLabel = (fieldId: string, fallbackLabel: string) => {
     const translation = FIELD_TRANSLATIONS[fieldId]?.[langCode];
     return translation || fallbackLabel;
   };
 
+  // ── Auto-voice engine ─────────────────────────────────────────────────────
+  const autoVoice = useAutoVoice({
+    language,
+    skipConfirm: true,   // save immediately — no YES/NO round-trip
+    onConfirmed: (value) => {
+      const fieldId = currentField?.id;
+      if (!fieldId) return;
+
+      let processedValue = value;
+      let errorMsg = null;
+
+      // ── 1. Determine if it's a numeric field ───────────────────────────────
+      const fieldNameLower = fieldId.toLowerCase();
+      const isNumericField = 
+        fieldNameLower.includes('phone') || 
+        fieldNameLower.includes('mobile') || 
+        fieldNameLower.includes('aadhaar') || 
+        fieldNameLower.includes('pincode') || 
+        fieldNameLower.includes('pin_code') ||
+        currentField.type === 'tel';
+      
+      if (isNumericField) {
+        // Clean transcript: remove spaces and non-digits for comparison
+        processedValue = value.replace(/\s+/g, '').replace(/[^0-9]/g, '');
+        
+        // Aadhaar (12 digits)
+        if (fieldNameLower.includes('aadhaar')) {
+           if (processedValue.length > 12) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '12');
+           else if (processedValue.length < 12) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '12');
+        }
+        // Phone (10 digits)
+        else if (fieldNameLower.includes('phone') || fieldNameLower.includes('mobile')) {
+           if (processedValue.length > 10) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '10');
+           else if (processedValue.length < 10) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '10');
+        }
+        // Pincode (6 digits)
+        else if (fieldNameLower.includes('pincode') || fieldNameLower.includes('pin_code')) {
+           if (processedValue.length > 6) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '6');
+           else if (processedValue.length < 6) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '6');
+        }
+      }
+
+      // ── 2. Email Validation ───────────────────────────────────────────────
+      if (currentField.type === 'email' && processedValue.trim().toLowerCase() !== 'skip') {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(processedValue.trim())) {
+          errorMsg = t.invalidEmailFormat;
+        }
+      }
+
+      // ── 3. General Regex Validation (from government-services.ts) ──────────
+      if (!errorMsg && currentField.validation?.pattern) {
+        const regex = new RegExp(currentField.validation.pattern);
+        if (!regex.test(processedValue)) {
+            const lang = (language || 'en-IN').split('-')[0];
+            errorMsg = currentField.validation.message?.[lang] || currentField.validation.message?.['en'] || t.invalidInput;
+        }
+      }
+
+      // ── Handle Error ──────────────────────────────────────────────────────
+      if (errorMsg) {
+        setVoiceError(errorMsg);
+        // Use a short delay before speaking error to ensure user has finished
+        setTimeout(async () => {
+          await speakText(errorMsg, language);
+          // Wait for user to digest, then retry the prompt
+          setTimeout(() => triggerFieldPrompt(currentFieldIndex), 1200);
+        }, 300);
+        return;
+      }
+
+      // ── Success: Save and Advance ─────────────────────────────────────────
+      setFormData(prev => ({ ...prev, [fieldId]: processedValue }));
+      setVoiceError(null);
+      
+      setTimeout(() => {
+        if (currentFieldIndex < fields.length - 1) {
+          setCurrentFieldIndex(i => i + 1);
+        } else {
+          setIsReviewing(true);
+        }
+      }, 800);
+    },
+    onRetry: () => {
+      triggerFieldPrompt(currentFieldIndex);
+    },
+    onError: (err: string) => {
+      setVoiceError((t as any).micError || "Microphone access denied. Please check site permissions.");
+    }
+  });
+
+  // ── Show interim speech result live in the current field ──────────────────
   useEffect(() => {
-    // Initialize form data with empty strings
+    if (autoVoice.state.interim && currentField?.id &&
+        currentField.type !== 'file' && !currentField.requiresFile) {
+      setFormData(prev => ({ ...prev, [currentField.id]: autoVoice.state.interim }));
+    }
+  }, [autoVoice.state.interim]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Trigger voice prompt for a field ──────────────────────────────────────
+  const triggerFieldPrompt = useCallback(async (idx: number) => {
+    const field = fields[idx];
+    if (!field || field.type === 'file' || field.requiresFile) return;
+
+    try {
+      const res = await fetch(
+        `/api/voice-process?fieldName=${encodeURIComponent(field.id)}&language=${encodeURIComponent(language)}`
+      );
+      const result = await res.json();
+      const prompt = result.voicePrompt ||
+        field.voiceLabel?.[langCode] ||
+        field.voiceLabel?.['en'] ||
+        `${t.pleaseEnterYour} ${field.label}`;
+      autoVoice.askQuestion(prompt);
+    } catch {
+      const prompt =
+        field.voiceLabel?.[langCode] ||
+        field.voiceLabel?.['en'] ||
+        `${t.pleaseEnterYour} ${field.label}`;
+      autoVoice.askQuestion(prompt);
+    }
+  }, [fields, language, langCode, t, autoVoice]);
+
+  useEffect(() => {
     const initialData: Record<string, string> = {};
-    fields.forEach((f: any) => initialData[f.id] = '');
+    fields.forEach((f: any) => (initialData[f.id] = ''));
     setFormData(initialData);
   }, [service]);
 
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
-      }
-      stopSpeaking();
-    };
-  }, []);
+  useEffect(() => () => { stopSpeaking(); }, []);
 
+  // ── Auto-trigger prompt when field changes ───────────────────────────────
   useEffect(() => {
     if (!isReviewing && !submittedQR && currentField) {
-      const fetchAndSpeakPrompt = async () => {
-        try {
-          // Fetch voice prompt from backend using the user's selected language
-          const response = await fetch(`/api/voice-process?fieldName=${encodeURIComponent(currentField.id)}&language=${encodeURIComponent(language)}`);
-          const result = await response.json();
-
-          // Use the voice prompt from backend if available, otherwise fall back to voiceLabel
-          const langCode = (typeof language === 'string' ? language : 'en-IN').split('-')[0];
-          const prompt = result.voicePrompt ||
-            currentField.voiceLabel?.[langCode] ||
-            currentField.voiceLabel?.['en'] ||
-            (t.pleaseEnterYour + ' ' + currentField.label);
-
-          const timer = setTimeout(() => {
-            // speakText will handle language fallback automatically if needed
-            speakText(prompt, language);
-          }, 500);
-
-          return () => clearTimeout(timer);
-        } catch (error) {
-          console.error('[VoiceForm] Error fetching voice prompt:', error);
-
-          // Fallback to voiceLabel if API fails
-          const langCode = (typeof language === 'string' ? language : 'en-IN').split('-')[0];
-          const voiceLabels = currentField.voiceLabel || {};
-          const prompt = voiceLabels[langCode] || voiceLabels['en'] || (t.pleaseEnterYour + ' ' + currentField.label);
-
-          const timer = setTimeout(() => {
-            speakText(prompt, language);
-          }, 500);
-
-          return () => clearTimeout(timer);
-        }
-      };
-
-      fetchAndSpeakPrompt();
+      const timer = setTimeout(() => triggerFieldPrompt(currentFieldIndex), 500);
+      return () => clearTimeout(timer);
     }
-  }, [currentFieldIndex, language, isReviewing, submittedQR]);
+  }, [currentFieldIndex, language, isReviewing, submittedQR]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cleanup audio recording when changing fields or language
-  useEffect(() => {
-    if (isRecording) {
-      stopRecording();
-    }
-    resetRecording();
-    setInterim('');
-    setVoiceError(null);
-    setListeningStatus('idle');
-    // Also stop Web Speech API
-    if (recognitionRef.current) {
-      try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
-      recognitionRef.current = null;
-    }
-  }, [currentFieldIndex, language]);
-
-  // Handle transcription when audio blob is ready
-  useEffect(() => {
-    if (shouldTranscribeBlob && audioBlob) {
-      setShouldTranscribeBlob(false);
-
-      // Use the field captured at record-start to avoid stale closure bugs
-      const capturedContext = recordingContextRef.current;
-
-      const transcribeNow = async () => {
-        console.log('[VoiceForm] Transcribing with Groq Whisper, blob size:', audioBlob.size);
-        const langCode = (capturedContext?.language || language || 'en-IN').split('-')[0];
-        const capturedFieldId = capturedContext?.fieldId || currentField?.id || '';
-
-        // Pass fieldId so Whisper gets a context prompt specific to this field
-        const result = await transcribeWithGroqWhisper(audioBlob, langCode, capturedFieldId);
-
-        resetRecording();
-        recordingContextRef.current = null; // clear after use
-
-        if (result.success && result.text) {
-          console.log(`[VoiceForm] Groq transcription for field "${capturedFieldId}":`, result.text);
-          sendToBackend(result.text.trim(), capturedFieldId);
-        } else {
-          console.error('[VoiceForm] Groq transcription failed:', result.error);
-          setVoiceError(result.error || t.failedToProcess);
-          setIsProcessing(false);
-        }
-      };
-
-      transcribeNow();
-    }
-  }, [shouldTranscribeBlob, audioBlob]);
-
-  // Send transcription to backend for processing
+  // Send transcription to backend for processing (kept for file-field or manual override)
   const sendToBackend = async (transcript: string, fieldId: string) => {
     // fieldId is always the one captured at record-start — do NOT re-read currentField here
     console.log('[VoiceForm] sendToBackend called with transcript:', transcript, 'fieldId:', fieldId);
@@ -310,135 +310,6 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
     }
   };
 
-  const handleStartListening = async () => {
-    console.log('[VoiceForm] Start recording clicked');
-
-    if (isRecording || isProcessing || listeningStatus !== 'idle') {
-      console.log('[VoiceForm] Skipping - already in progress');
-      return;
-    }
-
-    setVoiceError(null);
-    setInterim('');
-
-    // ── Snapshot the current field + language BEFORE any async work ───────────
-    // This is used later by the transcription callback to save to the correct field.
-    recordingContextRef.current = {
-      fieldId: currentField?.id || '',
-      fieldIndex: currentFieldIndex,
-      language: language || 'en-IN',
-    };
-
-    // ── PRIMARY: Web Speech API (works in Chrome for all Indian languages) ──
-    if (!useGroqWhisper) {
-      setListeningStatus('listening');
-
-      // Always create a new recognition instance
-      if (recognitionRef.current) {
-        try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
-        recognitionRef.current = null;
-      }
-
-      const recognition = initVoiceRecognition(
-        language,
-        (result: VoiceRecognitionResult) => {
-          if (result.transcript) {
-            if (result.isFinal) {
-              setInterim('');
-              setListeningStatus('processing');
-              stopVoiceRecording(recognitionRef.current);
-
-              // Show what we heard
-              setInterim(result.transcript);
-
-              // Send transcription to backend
-              const capturedCtx = recordingContextRef.current;
-              sendToBackend(result.transcript, capturedCtx?.fieldId || currentField.id);
-            } else {
-              // Show live interim result so user can see what is being heard
-              setInterim(result.transcript);
-              if (currentField?.type !== 'date' && currentField?.type !== 'file' && currentField?.type !== 'email') {
-                setFormData((prev) => ({
-                  ...prev,
-                  [currentField.id]: result.transcript,
-                }));
-              }
-            }
-          }
-        },
-        (error: string) => {
-          if (error.includes('aborted')) return;
-          setListeningStatus('idle');
-          console.error('[Voice] Recognition error:', error);
-
-          if (error.includes('Network Error') || error.includes('network')) {
-            // Try Groq as fallback
-            setVoiceError('Network error. Please try again.');
-          } else if (error.includes('not-allowed')) {
-            setVoiceError(t.micAccessDenied);
-          } else if (error.includes('no-speech')) {
-            setVoiceError('No speech detected. Please speak clearly and try again.');
-          } else if (!error.includes('aborted')) {
-            setVoiceError(t.failedToProcess + ': ' + error);
-          }
-        },
-        () => { setListeningStatus('idle'); }, // onEnd
-        () => { setListeningStatus('listening'); }  // onStart
-      );
-
-      if (!recognition) {
-        setVoiceError(t.microphoneNotSupported);
-        setListeningStatus('idle');
-        return;
-      }
-      recognitionRef.current = recognition;
-
-      try {
-        startVoiceRecording(recognitionRef.current);
-      } catch (err) {
-        console.error('Error starting voice recording:', err);
-        setVoiceError(t.couldNotStartMic);
-        setListeningStatus('idle');
-      }
-
-      return;
-    }
-
-    // ── FALLBACK: Groq Whisper (when Web Speech API is unavailable) ──
-    setListeningStatus('listening');
-    try {
-      console.log('[VoiceForm] Starting Groq Whisper audio recording');
-      await startRecording();
-    } catch (err: any) {
-      console.error('Error starting recording:', err);
-      setListeningStatus('idle');
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setVoiceError(t.micAccessDenied);
-      } else {
-        setVoiceError(t.couldNotStartMic);
-      }
-    }
-  };
-
-  const handleStopListening = async () => {
-    if (useGroqWhisper) {
-      if (isRecording) {
-        console.log('[VoiceForm] Stopping Groq Whisper recording');
-        stopRecording();
-        setIsProcessing(true);
-        setListeningStatus('processing');
-        setShouldTranscribeBlob(true);
-      }
-    } else {
-      // Stop Web Speech API
-      if (recognitionRef.current) {
-        try {
-          stopVoiceRecording(recognitionRef.current);
-        } catch (e) { }
-      }
-      setListeningStatus('idle');
-    }
-  };
 
   const handleNext = () => {
     // Check if current field is filled
@@ -899,51 +770,57 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                       language={langCode}
                     />
                   ) : currentField?.type === 'textarea' ? (
-                    <div className="relative">
-                      <Textarea
-                        value={formData[currentField?.id] || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, [currentField.id]: e.target.value }))}
-                        placeholder={t.clickToSpeak ? `${t.clickToSpeak} 🎙️ or Type` : 'Speak or Type...'}
-                        className="text-lg min-h-[140px] border-2 border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 rounded-xl px-6 py-5 transition-all duration-200 bg-neutral-900 text-white placeholder:text-neutral-500 shadow-sm hover:shadow-md resize-none"
-                      />
-                      {/* Voice Icon for Textarea */}
-                      <button
-                        onClick={listeningStatus === 'listening' ? handleStopListening : handleStartListening}
-                        disabled={isProcessing || listeningStatus === 'processing'}
-                        className={`absolute bottom-4 right-4 text-2xl hover:scale-110 transition-transform duration-200 active:scale-95 ${listeningStatus === 'listening' ? 'opacity-100 animate-pulse text-red-400' : 'opacity-70 hover:opacity-100'
-                          }`}
-                        title={listeningStatus === 'listening' ? 'Stop recording' : 'Click to speak'}
-                      >
-                        {listeningStatus === 'listening' ? '🔴' : listeningStatus === 'processing' ? '⏳' : '🎙️'}
-                      </button>
-                    </div>
+                    <Textarea
+                      value={formData[currentField?.id] || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, [currentField.id]: e.target.value }))}
+                      onClick={() => {
+                        // Allow tap-to-retry if the voice engine crashed or stopped
+                        if (autoVoice.state.phase === 'idle' || voiceError) {
+                          setVoiceError(null);
+                          triggerFieldPrompt(currentFieldIndex);
+                        }
+                      }}
+                      placeholder={
+                        autoVoice.state.phase === 'listening'
+                          ? (LISTENING_LABELS[autoVoice.langCode] || '🎤 Listening…')
+                          : 'Tap here to answer by voice, or type…'
+                      }
+                      className={`text-lg min-h-[140px] border-2 focus:ring-2 rounded-xl px-6 py-5 transition-all duration-300 bg-neutral-900 text-white placeholder:text-neutral-500 shadow-sm hover:shadow-md resize-none ${
+                        autoVoice.state.phase === 'listening' || autoVoice.state.phase === 'confirm_listen'
+                          ? 'border-red-500/70 focus:border-red-500 focus:ring-red-500/20'
+                          : 'border-neutral-800 focus:border-cyan-500 focus:ring-cyan-500/20'
+                      }`}
+                    />
                   ) : (
                     <>
-                      <div className="relative">
-                        <Input
-                          type={currentField?.type || 'text'}
-                          value={formData[currentField?.id] || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, [currentField.id]: e.target.value }))}
-                          placeholder={t.clickToSpeak ? `${t.clickToSpeak} 🎙️ or Type` : 'Speak or Type...'}
-                          style={{ colorScheme: 'dark' }}
-                          className={
-                            `text-lg h-16 border-2 rounded-xl px-6 pr-16 transition-all duration-200 shadow-sm hover:shadow-md text-white placeholder:text-neutral-500 ` +
-                            (currentField?.type === 'date'
-                              ? 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900 cursor-pointer'
-                              : 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900')
+                      <Input
+                        type={currentField?.type || 'text'}
+                        value={formData[currentField?.id] || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, [currentField.id]: e.target.value }))}
+                        onClick={() => {
+                          // Allow tap-to-retry if the voice engine crashed or stopped
+                          if (autoVoice.state.phase === 'idle' || voiceError) {
+                            setVoiceError(null);
+                            triggerFieldPrompt(currentFieldIndex);
                           }
-                        />
-                        {/* Voice Icon for Input */}
-                        <button
-                          onClick={listeningStatus === 'listening' ? handleStopListening : handleStartListening}
-                          disabled={isProcessing || listeningStatus === 'processing'}
-                          className={`absolute right-4 top-1/2 -translate-y-1/2 text-2xl hover:scale-110 transition-transform duration-200 active:scale-95 ${listeningStatus === 'listening' ? 'opacity-100 animate-pulse text-red-400' : 'opacity-70 hover:opacity-100'
-                            }`}
-                          title={listeningStatus === 'listening' ? 'Stop recording' : 'Click to speak'}
-                        >
-                          {listeningStatus === 'listening' ? '🔴' : listeningStatus === 'processing' ? '⏳' : '🎙️'}
-                        </button>
-                      </div>
+                        }}
+                        placeholder={
+                          autoVoice.state.phase === 'listening'
+                            ? (LISTENING_LABELS[autoVoice.langCode] || '🎤 Listening…')
+                            : autoVoice.state.phase === 'confirm_listen'
+                            ? '🎤 Say YES or NO…'
+                            : 'Tap here to answer by voice, or type…'
+                        }
+                        style={{ colorScheme: 'dark' }}
+                        className={
+                          `text-lg h-16 border-2 rounded-xl px-6 transition-all duration-300 shadow-sm hover:shadow-md text-white placeholder:text-neutral-400 ` +
+                          (autoVoice.state.phase === 'listening' || autoVoice.state.phase === 'confirm_listen'
+                            ? 'border-red-500/70 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 bg-neutral-900'
+                            : currentField?.type === 'date'
+                            ? 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900 cursor-pointer'
+                            : 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900')
+                        }
+                      />
 
                       {/* Display Options if available (e.g., Gender) */}
                       {currentField?.options && (
@@ -977,14 +854,23 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
 
 
 
-              {listeningStatus === 'processing' && (
-                <div className="mb-4 p-3 bg-amber-900/40 border border-amber-700 rounded-lg flex items-center gap-2">
-                  <span className="text-amber-300 animate-spin">⟳</span>
-                  <p className="text-sm text-amber-300 font-semibold">Processing what you said...</p>
+              {/* Live interim transcript — shown unobtrusively below the input */}
+              {(autoVoice.state.interim || autoVoice.state.phase === 'confirm_listen') && (
+                <div className="mt-2 px-1">
+                  {autoVoice.state.interim && (
+                    <p className="text-xs text-neutral-400 italic">
+                      🎤 {autoVoice.state.interim}…
+                    </p>
+                  )}
+                  {autoVoice.state.phase === 'confirm_listen' && (
+                    <p className="text-xs text-cyan-400 font-medium">
+                      Say <span className="font-bold">YES</span> to confirm or <span className="font-bold">NO</span> to retry
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Error Display */}
+
               {voiceError && (
                 <div className="mb-6 p-3 bg-red-900/50 border border-red-700 rounded-lg">
                   <p className="text-sm text-red-300 font-medium">{voiceError}</p>

@@ -1,13 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { GOVERNMENT_SERVICES, SERVICE_CATEGORIES, getTranslatedService } from '@/lib/government-services';
-import { speakText, stopSpeaking } from '@/lib/voice-utils';
-import { Search, Mic, Shield, Languages, Lock, Mic2 } from 'lucide-react';
+import { 
+  speakText, 
+  stopSpeaking,
+  initVoiceRecognition,
+  startVoiceRecording,
+  stopVoiceRecording,
+  abortVoiceRecording,
+  transcribeWithGroqWhisper,
+  type VoiceRecognitionResult
+} from '@/lib/voice-utils';
+import { useAudioRecorder } from '@/lib/audio-recorder';
+import { Search, Mic, Shield, Languages, Lock, Mic2, MicOff, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { LISTENING_LABELS } from '@/lib/auto-voice-engine';
 
 // Falling animation keyframes
 const FALLING_ANIMATION = `
@@ -65,8 +76,83 @@ const ServiceSelectorComponent = ({ onSelectService, language, onServiceSelected
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [filteredServices, setFilteredServices] = useState(GOVERNMENT_SERVICES);
-  const [isListening, setIsListening] = useState(false);
   const [animatedCards, setAnimatedCards] = useState<Set<number>>(new Set());
+
+  // Voice recording state
+  const [listeningStatus, setListeningStatus] = useState<'idle' | 'listening' | 'processing'>('idle');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [shouldTranscribeBlob, setShouldTranscribeBlob] = useState(false);
+  const [autoSelectVoiceTerm, setAutoSelectVoiceTerm] = useState('');
+  const recognitionRef = useRef<any | null>(null);
+
+  // Determine whether to use Groq Whisper fallback (when Web Speech API unavailable)
+  const [useGroqWhisper] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const hasWebSpeech = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
+    return !hasWebSpeech;
+  });
+
+  const { isRecording, audioBlob, startRecording, stopRecording, resetRecording } = useAudioRecorder();
+  
+  // Auto-listen prompts per language
+  const AUTO_PROMPTS: Record<string, string> = {
+    en: 'Please say the name of the service or form you need.',
+    hi: 'कृपया उस सेवा या फॉर्म का नाम बोलें जो आपको चाहिए।',
+    te: 'దయచేసి మీకు అవసరమైన సేవ లేదా ఫారమ్ పేరు చెప్పండి.',
+    kn: 'ದಯವಿಟ್ಟು ನಿಮಗೆ ಬೇಕಾದ ಸೇವೆ ಅಥವಾ ಫಾರ್ಮ್ ಹೆಸರು ಹೇಳಿ.',
+    ta: 'உங்களுக்கு தேவையான சேவை அல்லது படிவத்தின் பெயரை சொல்லுங்கள்.',
+    ml: 'ദയവായി നിങ്ങൾക്ക് ആവശ്യമായ സേവനത്തിന്റെ അല്ലെങ്കിൽ ഫോമിന്റെ പേര് പറയൂ.',
+    mr: 'कृपया आपल्याला हव्या असलेल्या सेवेचे किंवा फॉर्मचे नाव सांगा.',
+    bn: 'অনুগ্রহ করে আপনার প্রয়োজনীয় পরিষেবা বা ফর্মের নাম বলুন।',
+    gu: 'કૃપા કરીને તમને જોઈતી સેવા અથવા ફોર્મ નું નામ કહો.',
+    or: 'Please say the name of the service or form you need.',
+    pa: 'ਕਿਰਪਾ ਕਰਕੇ ਉਸ ਸੇਵਾ ਜਾਂ ਫਾਰਮ ਦਾ ਨਾਮ ਕਹੋ ਜੋ ਤੁਹਾਨੂੰ ਚਾਹੀਦਾ ਹੈ।',
+    ur: 'براہ کرم اس سروس یا فارم کا نام بتائیں جو آپ کو چاہیے۔',
+  };
+
+  // Auto-open mic after speaking the prompt on mount
+  const hasAutoListenedRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoListenedRef.current) return;
+    hasAutoListenedRef.current = true;
+
+    const prompt = AUTO_PROMPTS[langCode] || AUTO_PROMPTS['en'];
+    const run = async () => {
+      await new Promise(r => setTimeout(r, 800));
+      await speakText(prompt, voiceCode);
+      await new Promise(r => setTimeout(r, 500));
+      handleVoiceSearch();
+    };
+    run();
+    return () => { stopSpeaking(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (shouldTranscribeBlob && audioBlob) {
+      setShouldTranscribeBlob(false);
+      const transcribeNow = async () => {
+        const result = await transcribeWithGroqWhisper(audioBlob, langCode.split('-')[0], 'service');
+        resetRecording();
+        if (result.success && result.text) {
+          const newTerm = result.text.trim();
+          setSearchTerm(newTerm);
+          setAutoSelectVoiceTerm(newTerm);
+        } else {
+          setVoiceError('Transcription failed');
+        }
+        setListeningStatus('idle');
+      };
+      transcribeNow();
+    }
+  }, [shouldTranscribeBlob, audioBlob]);
 
   // Reduced categories for cleaner UI
   const MAIN_CATEGORIES = ['Identity', 'Finance', 'Health', 'Education', 'Employment', 'Transport', 'Social', 'Housing', 'Legal', 'Utilities'];
@@ -81,10 +167,38 @@ const ServiceSelectorComponent = ({ onSelectService, language, onServiceSelected
 
     // Filter by search term
     if (searchTerm) {
+      let lowerSearch = searchTerm.toLowerCase();
+
+      // Normalize common transcription variations
+      const aliases: Record<string, string> = {
+        'aadhar': 'aadhaar',
+        'adhar': 'aadhaar',
+        'resident': 'residence',
+        'licence': 'license',
+        'pf': 'epf',
+        'nrega': 'mgnrega'
+      };
+
+      Object.entries(aliases).forEach(([key, value]) => {
+        const regex = new RegExp(`\\b${key}\\b`, 'g');
+        lowerSearch = lowerSearch.replace(regex, value);
+      });
+      
+      lowerSearch = lowerSearch.trim();
+        
+      // Filter words, allowing important short words (e.g., "ID", "RC", "PF")
+      const searchWords = lowerSearch.split(/\s+/).filter(w => w.length > 1 || w === lowerSearch);
+        
       filtered = filtered.filter(
-        (service) =>
-          service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          service.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (service) => {
+          const transService = getTranslatedService(service, langCode);
+          // Combine original name/desc and translated name/desc
+          const searchableText = `${service.name} ${service.description} ${transService.name} ${transService.description}`.toLowerCase();
+          
+          // Match the exact corrected phrase, or every individual word
+          return searchableText.includes(lowerSearch) || 
+                 (searchWords.length > 0 && searchWords.every(word => searchableText.includes(word)));
+        }
       );
     }
 
@@ -101,6 +215,17 @@ const ServiceSelectorComponent = ({ onSelectService, language, onServiceSelected
       }, 800 + (index * 80)); // Start cards after hero section (800ms) with 80ms delay between each
     });
   }, [filteredServices]);
+
+  // Automatically select a service if voice search yields exactly one result
+  useEffect(() => {
+    if (autoSelectVoiceTerm && autoSelectVoiceTerm === searchTerm) {
+      if (filteredServices.length === 1) {
+        handleServiceClick(getTranslatedService(filteredServices[0], langCode));
+      }
+      setAutoSelectVoiceTerm('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredServices, autoSelectVoiceTerm, searchTerm, langCode]);
 
   const handleServiceClick = (service: any) => {
     // Speak service selection
@@ -133,9 +258,72 @@ const ServiceSelectorComponent = ({ onSelectService, language, onServiceSelected
     }, 1500);
   };
 
-  const handleVoiceSearch = () => {
-    setIsListening(!isListening);
-    // Voice search implementation would go here
+  const handleVoiceSearch = async () => {
+    if (listeningStatus === 'listening') {
+      if (useGroqWhisper) {
+        if (isRecording) {
+          stopRecording();
+          setListeningStatus('processing');
+          setShouldTranscribeBlob(true);
+        }
+      } else {
+        if (recognitionRef.current) {
+          try { stopVoiceRecording(recognitionRef.current); } catch (e) { }
+        }
+        setListeningStatus('processing');
+      }
+      return;
+    }
+
+    if (isRecording || listeningStatus !== 'idle') return;
+    setVoiceError(null);
+    setSearchTerm('');
+
+    if (!useGroqWhisper) {
+      setListeningStatus('listening');
+      if (recognitionRef.current) {
+        try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
+        recognitionRef.current = null;
+      }
+      
+      const recognition = initVoiceRecognition(
+        voiceCode,
+        (result: VoiceRecognitionResult) => {
+          if (result.transcript) {
+            if (result.isFinal) {
+              setListeningStatus('processing');
+              stopVoiceRecording(recognitionRef.current);
+              const newTerm = result.transcript.trim();
+              setSearchTerm(newTerm);
+              setAutoSelectVoiceTerm(newTerm);
+              setListeningStatus('idle');
+            } else {
+              setSearchTerm(result.transcript);
+            }
+          }
+        },
+        (error: string) => {
+          if (!error.includes('aborted')) {
+            setListeningStatus('idle');
+            setVoiceError('Could not recognize voice. Try again.');
+          }
+        },
+        () => { setListeningStatus('idle'); },
+        () => { setListeningStatus('listening'); }
+      );
+      
+      if (!recognition) {
+        setVoiceError('Voice recognition not supported');
+        setListeningStatus('idle');
+        return;
+      }
+      recognitionRef.current = recognition;
+      try { startVoiceRecording(recognitionRef.current); } catch (e) { setListeningStatus('idle'); }
+      return;
+    }
+
+    setListeningStatus('listening');
+    try { await startRecording(); } catch (e) { setListeningStatus('idle'); }
   };
 
   const categoryLabels: Record<string, Record<string, string>> = {
@@ -412,26 +600,51 @@ const ServiceSelectorComponent = ({ onSelectService, language, onServiceSelected
 
         {/* Search Bar */}
         <div className="max-w-2xl mx-auto mb-8 card-fall" style={{ animationDelay: '0.24s' }}>
-          <div className="relative bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+          <div className={`relative bg-white/10 backdrop-blur-md rounded-2xl border transition-all duration-300 ${
+            listeningStatus === 'listening'
+              ? 'border-red-500/70 shadow-[0_0_0_3px_rgba(239,68,68,0.25)]'
+              : 'border-white/20'
+          }`}>
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <Input
               type="text"
-              placeholder={currentLabels.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-14 pl-14 pr-16 text-base bg-transparent text-white placeholder-gray-500 border-0 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="w-full h-14 pl-14 pr-16 text-base bg-transparent text-white placeholder-gray-400 border-0 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder={
+                listeningStatus === 'listening'
+                  ? (LISTENING_LABELS[langCode] || '🎤 Listening…')
+                  : listeningStatus === 'processing'
+                  ? '⟳ Processing…'
+                  : currentLabels.searchPlaceholder
+              }
             />
             <Button
               onClick={handleVoiceSearch}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl transition-all ${isListening
+              disabled={listeningStatus === 'processing'}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl transition-all flex items-center justify-center ${
+                listeningStatus === 'listening'
                 ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : listeningStatus === 'processing'
+                ? 'bg-amber-500 hover:bg-amber-600'
                 : 'bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600'
                 }`}
             >
-              <Mic className="w-5 h-5 text-white" />
+              {listeningStatus === 'listening' ? (
+                <MicOff className="w-5 h-5 text-white" />
+              ) : listeningStatus === 'processing' ? (
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
+              ) : (
+                <Mic className="w-5 h-5 text-white" />
+              )}
             </Button>
           </div>
+          {/* Voice error */}
+          {voiceError && (
+            <p className="mt-2 text-red-400 text-sm text-center">{voiceError}</p>
+          )}
         </div>
+
 
         {/* Category Filter Tabs */}
         <div className="flex flex-wrap gap-2 justify-center mb-8">

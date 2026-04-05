@@ -707,20 +707,31 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
   };
   const [lastPlayedLanguageCode, setLastPlayedLanguageCode] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const currentLangIndex = useRef(0);
   // true only after the user physically clicks something — prevents autoplay-policy errors
   // that occur when selectedLanguage is restored from localStorage before any interaction.
   const userHasInteracted = useRef(false);
 
-  // Stop all audio/speech playback safely (also breaks the sequential loop)
+  // A ref to hold a cancel function for the currently active audio loop.
+  // Calling it will immediately stop playback and prevent the next step from firing.
+  const cancelPlaybackRef = useRef<(() => void) | null>(null);
+
+  // Stop all audio/speech playback safely (also cancels any sequential loop)
   const stopAudio = () => {
+    // Cancel the sequential loop if one is running
+    if (cancelPlaybackRef.current) {
+      cancelPlaybackRef.current();
+      cancelPlaybackRef.current = null;
+    }
     // Stop Web Speech API synthesis
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    // Stop any HTMLAudio element
+    // Stop & clean up the current HTMLAudio element
     if (audioRef.current) {
       try {
+        // Clear handlers FIRST so they don't fire after we stop
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
         audioRef.current.removeAttribute('src');
@@ -728,24 +739,9 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
       } catch {
         // Ignore errors during stop
       }
+      audioRef.current = null;
     }
-    currentLangIndex.current = 999; // Break out of any sequential loop
     setIsPlayingInstructionSync(false);
-  };
-
-  // Silently pause the previous audio element WITHOUT breaking the sequential loop index.
-  // Used internally between each language in the sequential playback chain.
-  const pausePreviousAudio = () => {
-    if (audioRef.current) {
-      try {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.removeAttribute('src');
-        audioRef.current.load();
-      } catch {
-        // Ignore
-      }
-    }
   };
 
   // Language code to BCP-47 locale map for Web Speech API
@@ -768,7 +764,7 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
     userHasInteracted.current = true;
     if (isPlayingInstructionRef.current) return;
 
-    // Stop everything first
+    // Stop any previous playback cleanly
     stopAudio();
     setIsPlayingInstructionSync(true);
 
@@ -788,12 +784,17 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
       { label: 'Urdu', lang: 'ur' },
     ];
 
+    // Per-invocation cancellation flag — prevents ghost callbacks from firing
+    // after stopAudio() is called mid-sequence.
+    let cancelled = false;
+    cancelPlaybackRef.current = () => { cancelled = true; };
+
     let idx = 0;
 
     const playOne = async () => {
-      // Stop if finished or user cancelled
-      if (idx >= sequence.length || !isPlayingInstructionRef.current) {
-        setIsPlayingInstructionSync(false);
+      // Bail out if cancelled or finished
+      if (cancelled || idx >= sequence.length) {
+        if (!cancelled) setIsPlayingInstructionSync(false);
         return;
       }
 
@@ -806,32 +807,61 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
         return;
       }
 
+      let blobUrl: string | null = null;
       try {
         const res = await fetch(`/api/tts-proxy?text=${encodeURIComponent(text)}&lang=${lang}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
+        // Check cancellation again after the async fetch
+        if (cancelled) return;
 
-        pausePreviousAudio();
-        const audio = new Audio(url);
+        const blob = await res.blob();
+        blobUrl = URL.createObjectURL(blob);
+
+        // Stop the previous audio element and clear its handlers BEFORE creating the new one
+        if (audioRef.current) {
+          audioRef.current.onended = null;
+          audioRef.current.onerror = null;
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+          audioRef.current = null;
+        }
+
+        // Check cancellation one more time after sync cleanup
+        if (cancelled) {
+          if (blobUrl) URL.revokeObjectURL(blobUrl);
+          return;
+        }
+
+        const audio = new Audio(blobUrl);
         audioRef.current = audio;
-        audio.volume = 1;
+        audio.volume = 1.0;
+        // Normalise playback rate to 1 (prevent browser or OS rate drift)
+        audio.playbackRate = 1.0;
+        // Prevent automatic looping
+        audio.loop = false;
+
+        const cleanup = () => {
+          if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
+          // Detach handlers so they can never fire twice
+          audio.onended = null;
+          audio.onerror = null;
+        };
 
         const next = () => {
-          URL.revokeObjectURL(url);
+          cleanup();
+          if (cancelled) return;
           idx++;
-          if (isPlayingInstructionRef.current) {
-            setTimeout(playOne, 400); // 400ms gap between each language
-          } else {
-            setIsPlayingInstructionSync(false);
-          }
+          // 400 ms pause between languages for natural pacing
+          setTimeout(playOne, 400);
         };
 
         audio.onended = next;
         audio.onerror = next;
         await audio.play();
       } catch (err) {
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+        if (cancelled) return;
         console.warn(`TTS skip [${lang}]:`, err);
         idx++;
         playOne(); // skip and continue on error
@@ -862,20 +892,25 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
       const response = await fetch(`/api/tts-proxy?text=${encodeURIComponent(confirmationText)}&lang=${selectedLang.code}`);
       if (response.ok) {
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
 
-        // Stop any previous audio
+        // Stop any previous audio (clears handlers + pauses)
         stopAudio();
 
-        audioRef.current = new Audio(url);
-        audioRef.current.volume = 1;
+        const audio = new Audio(blobUrl);
+        audio.volume = 1.0;
+        audio.playbackRate = 1.0;
+        audio.loop = false;
+        audioRef.current = audio;
 
         const handleCompletion = () => {
-          URL.revokeObjectURL(url);
+          URL.revokeObjectURL(blobUrl);
+          audio.onended = null;
+          audio.onerror = null;
         };
 
-        audioRef.current.onended = handleCompletion;
-        audioRef.current.onerror = handleCompletion;
+        audio.onended = handleCompletion;
+        audio.onerror = handleCompletion;
 
         try {
           await audioRef.current.play();

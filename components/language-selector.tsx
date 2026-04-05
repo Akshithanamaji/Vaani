@@ -20,53 +20,100 @@ interface Language {
 const LANGUAGES: Language[] = [
   {
     code: 'en', name: 'English',   nativeName: 'English',  flag: '🇺🇸', voiceCode: 'en-IN', ttsLang: 'en',
-    announcement: 'In this website we have 12 languages. Number 1, English.',
+    announcement: 'Number 1. English.',
   },
   {
     code: 'hi', name: 'Hindi',     nativeName: 'हिन्दी',    flag: '🇮🇳', voiceCode: 'hi-IN', ttsLang: 'hi',
-    announcement: 'इस वेबसाइट में 12 भाषाएं हैं। नंबर 2, हिन्दी।',
+    announcement: 'नंबर 2. हिन्दी.',
   },
   {
     code: 'te', name: 'Telugu',    nativeName: 'తెలుగు',   flag: '🇮🇳', voiceCode: 'te-IN', ttsLang: 'te',
-    announcement: 'ఈ వెబ్‌సైట్‌లో 12 భాషలు ఉన్నాయి. నంబర్ 3, తెలుగు.',
+    announcement: 'నంబర్ 3. తెలుగు.',
   },
   {
     code: 'kn', name: 'Kannada',   nativeName: 'ಕನ್ನಡ',    flag: '🇮🇳', voiceCode: 'kn-IN', ttsLang: 'kn',
-    announcement: 'ಈ ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ 12 ಭಾಷೆಗಳಿವೆ. ಸಂಖ್ಯೆ 4, ಕನ್ನಡ.',
+    announcement: 'ನಂಬರ್ 4. ಕನ್ನಡ.',
   },
   {
     code: 'ta', name: 'Tamil',     nativeName: 'தமிழ்',    flag: '🇮🇳', voiceCode: 'ta-IN', ttsLang: 'ta',
-    announcement: 'இந்த இணையதளத்தில் 12 மொழிகள் உள்ளன. எண் 5, தமிழ்.',
+    announcement: 'எண் 5. தமிழ்.',
   },
   {
     code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം',   flag: '🇮🇳', voiceCode: 'ml-IN', ttsLang: 'ml',
-    announcement: 'ഈ വെബ്സൈറ്റിൽ 12 ഭാഷകളുണ്ട്. നമ്പർ 6, മലയാളം.',
+    announcement: 'നമ്പർ 6. മലയാളം.',
   },
   {
     code: 'mr', name: 'Marathi',   nativeName: 'मराठी',    flag: '🇮🇳', voiceCode: 'mr-IN', ttsLang: 'mr',
-    announcement: 'या वेबसाईटवर 12 भाषा आहेत. क्रमांक 7, मराठी.',
+    announcement: 'क्रमांक 7. मराठी.',
   },
   {
     code: 'bn', name: 'Bengali',   nativeName: 'বাংলা',    flag: '🇮🇳', voiceCode: 'bn-IN', ttsLang: 'bn',
-    announcement: 'এই ওয়েবসাইটে 12 টি ভাষা আছে। নম্বর 8, বাংলা।',
+    announcement: 'নম্বর 8. বাংলা.',
   },
   {
     code: 'gu', name: 'Gujarati',  nativeName: 'ગુજરાતી',  flag: '🇮🇳', voiceCode: 'gu-IN', ttsLang: 'gu',
-    announcement: 'આ વેબસાઈટમાં 12 ભાષાઓ છે. નંબર 9, ગુજરાતી.',
+    announcement: 'નંબર 9. ગુજરાતી.',
   },
   {
-    code: 'or', name: 'Odia',      nativeName: 'ଓଡ଼ିଆ',    flag: '🇮🇳', voiceCode: 'or-IN', ttsLang: 'en',
-    announcement: 'In this website we have 12 languages. Number 10, Odia.',
+    code: 'or', name: 'Odia',      nativeName: 'ଓଡ଼ିଆ',    flag: '🇮🇳', voiceCode: 'or-IN', ttsLang: 'hi',
+    // Odia not supported by Google TTS → Hindi fallback (same voice tone)
+    announcement: 'नंबर 10. ओडिया.',
   },
   {
     code: 'pa', name: 'Punjabi',   nativeName: 'ਪੰਜਾਬੀ',   flag: '🇮🇳', voiceCode: 'pa-IN', ttsLang: 'pa',
-    announcement: 'ਇਸ ਵੈੱਬਸਾਈਟ ਵਿੱਚ 12 ਭਾਸ਼ਾਵਾਂ ਹਨ। ਨੰਬਰ 11, ਪੰਜਾਬੀ।',
+    announcement: 'ਨੰਬਰ 11. ਪੰਜਾਬੀ.',
   },
   {
     code: 'ur', name: 'Urdu',      nativeName: 'اردو',     flag: '🇮🇳', voiceCode: 'ur-IN', ttsLang: 'ur',
-    announcement: 'اس ویب سائٹ میں 12 زبانیں ہیں۔ نمبر 12، اردو۔',
+    announcement: 'نمبر 12. اردو.',
   },
 ];
+
+// Ask-prompt in every language — after announcing all 12, ask user to pick
+const ASK_PROMPTS: { lang: string; ttsLang: string; text: string }[] = [
+  { lang: 'en', ttsLang: 'en', text: 'Which language do you want? Please say the language name.' },
+  { lang: 'hi', ttsLang: 'hi', text: 'आप कौन सी भाषा चाहते हैं? भाषा का नाम बोलें।' },
+  { lang: 'te', ttsLang: 'te', text: 'మీకు ఏ భాష కావాలి? భాష పేరు చెప్పండి.' },
+  { lang: 'kn', ttsLang: 'kn', text: 'ನಿಮಗೆ ಯಾವ ಭಾಷೆ ಬೇಕು? ಭಾಷೆಯ ಹೆಸರು ಹೇಳಿ.' },
+  { lang: 'ta', ttsLang: 'ta', text: 'உங்களுக்கு எந்த மொழி வேண்டும்? மொழி பெயர் சொல்லுங்கள்.' },
+  { lang: 'ml', ttsLang: 'ml', text: 'നിങ്ങൾക്ക് ഏത് ഭാഷ വേണം? ഭാഷ പേര് പറയൂ.' },
+  { lang: 'mr', ttsLang: 'mr', text: 'तुम्हाला कोणती भाषा हवी? भाषेचे नाव सांगा.' },
+  { lang: 'bn', ttsLang: 'bn', text: 'আপনি কোন ভাষা চান? ভাষার নাম বলুন।' },
+  { lang: 'gu', ttsLang: 'gu', text: 'તમને કઈ ભાષા જોઈએ? ભાષાનું નામ કહો.' },
+  { lang: 'ur', ttsLang: 'ur', text: 'آپ کون سی زبان چاہتے ہیں؟ زبان کا نام بتائیں۔' },
+];
+
+// All possible voice-recognition aliases → language code
+const LANGUAGE_KEYWORDS: Record<string, string> = {
+  // English
+  english: 'en', 'english language': 'en', 'अंग्रेजी': 'en', 'ఆంగ్లం': 'en',
+  // Hindi
+  hindi: 'hi', 'हिन्दी': 'hi', 'हिंदी': 'hi', 'hindi language': 'hi',
+  'హిందీ': 'hi', 'ஹிந்தி': 'hi', 'ഹിന്ദി': 'hi', 'ਹਿੰਦੀ': 'hi',
+  'হিন্দি': 'hi', 'ಹಿಂದಿ': 'hi', 'हिंदी भाषा': 'hi',
+  // Telugu
+  telugu: 'te', 'తెలుగు': 'te', 'తెలుగు language': 'te', 'telugu language': 'te',
+  'తెలుగు భాష': 'te',
+  // Kannada
+  kannada: 'kn', 'ಕನ್ನಡ': 'kn', 'kannada language': 'kn', 'ಕನ್ನಡ ಭಾಷೆ': 'kn',
+  // Tamil
+  tamil: 'ta', 'தமிழ்': 'ta', 'tamil language': 'ta', 'தமிழ் மொழி': 'ta',
+  // Malayalam
+  malayalam: 'ml', 'മലയാളം': 'ml', 'malayalam language': 'ml', 'മലയാളം ഭാഷ': 'ml',
+  // Marathi
+  marathi: 'mr', 'मराठी': 'mr', 'marathi language': 'mr', 'मराठी भाषा': 'mr',
+  // Bengali
+  bengali: 'bn', 'বাংলা': 'bn', 'bengali language': 'bn', 'বাংলা ভাষা': 'bn',
+  bangla: 'bn',
+  // Gujarati
+  gujarati: 'gu', 'ગુજરાતી': 'gu', 'gujarati language': 'gu', 'ગુજરાતી ભાષા': 'gu',
+  // Odia
+  odia: 'or', 'ଓଡ଼ିଆ': 'or', 'odia language': 'or', 'odiya': 'or', 'oriya': 'or',
+  // Punjabi
+  punjabi: 'pa', 'ਪੰਜਾਬੀ': 'pa', 'punjabi language': 'pa', 'ਪੰਜਾਬੀ ਭਾਸ਼ਾ': 'pa',
+  // Urdu
+  urdu: 'ur', 'اردو': 'ur', 'urdu language': 'ur',
+};
 
 interface LanguageSelectorProps {
   isOpen: boolean;
@@ -91,7 +138,7 @@ async function playClip(text: string, lang: string, isCancelled: () => boolean):
 
     await new Promise<void>((resolve) => {
       const cleanup = () => { URL.revokeObjectURL(blobUrl); resolve(); };
-      const timer = setTimeout(cleanup, 9000);
+      const timer = setTimeout(cleanup, 12000);
       audio.onended  = () => { clearTimeout(timer); cleanup(); };
       audio.onerror  = () => { clearTimeout(timer); cleanup(); };
       audio.play().catch(() => { clearTimeout(timer); cleanup(); });
@@ -103,34 +150,172 @@ async function playClip(text: string, lang: string, isCancelled: () => boolean):
 
 const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
+/** Match a transcript string to a language code */
+function detectLanguageFromSpeech(transcript: string): string | null {
+  const lower = transcript.toLowerCase().trim();
+  // Direct map lookup
+  for (const [keyword, code] of Object.entries(LANGUAGE_KEYWORDS)) {
+    if (lower.includes(keyword.toLowerCase())) {
+      return code;
+    }
+  }
+  return null;
+}
+
 export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: LanguageSelectorProps) {
   const [selected, setSelected]           = useState<Language | null>(null);
-  /** -1 = intro, 0-11 = language index, null = idle */
-  const [speaking, setSpeaking]           = useState<number | null>(null);
+  /** -1 = intro, 0-11 = language index, 'ask' = asking prompt, null = idle */
+  const [speaking, setSpeaking]           = useState<number | 'ask' | null>(null);
   const [muted, setMuted]                 = useState(false);
+  const [isListening, setIsListening]     = useState(false);
+  const [voiceHint, setVoiceHint]         = useState('');
+  const [phase, setPhase]                 = useState<'announcing' | 'asking' | 'listening' | 'idle'>('idle');
 
-  const cancelRef = useRef(false);
-  const mutedRef  = useRef(muted);
-  const running   = useRef(false);
+  const cancelRef  = useRef(false);
+  const mutedRef   = useRef(muted);
+  const running    = useRef(false);
+  const recognitionRef = useRef<any>(null);
+  const listeningActiveRef = useRef(false);
 
   useEffect(() => { mutedRef.current = muted; }, [muted]);
+
+  /* ── stop speech recognition ──────────────────────────────────── */
+  const stopListening = useCallback(() => {
+    listeningActiveRef.current = false;
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setVoiceHint('');
+  }, []);
 
   /* ── stop everything ─────────────────────────────────────────── */
   const stopAll = useCallback(() => {
     cancelRef.current = true;
     running.current   = false;
     setSpeaking(null);
-  }, []);
+    setPhase('idle');
+    stopListening();
+  }, [stopListening]);
+
+  /* ── start continuous voice listening ────────────────────────── */
+  const startListening = useCallback(() => {
+    if (listeningActiveRef.current) return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setVoiceHint('Voice recognition not supported in this browser.');
+      return;
+    }
+
+    listeningActiveRef.current = true;
+    setIsListening(true);
+    setVoiceHint('Listening... Say the language name');
+
+    const recognition: any = new SpeechRecognition();
+    recognition.continuous      = false;
+    recognition.interimResults  = true;
+    // Use multiple languages so it can detect any of them
+    recognition.lang            = 'hi-IN'; // Hindi as primary; browser will also pick up others
+    recognitionRef.current      = recognition;
+
+    recognition.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setVoiceHint(`Heard: "${transcript}"`);
+
+      const detectedCode = detectLanguageFromSpeech(transcript);
+      if (detectedCode) {
+        const lang = LANGUAGES.find(l => l.code === detectedCode);
+        if (lang) {
+          recognition.abort();
+          listeningActiveRef.current = false;
+          setIsListening(false);
+          setVoiceHint('');
+          setSelected(lang);
+          setPhase('idle');
+          // Auto-confirm — play confirmation & select
+          if (!mutedRef.current) {
+            playClip(lang.nativeName, lang.ttsLang, () => false);
+          }
+          // Small delay then auto-confirm
+          setTimeout(() => {
+            onLanguageSelect(lang);
+            onClose();
+          }, 1500);
+          return;
+        }
+      }
+    };
+
+    recognition.onend = () => {
+      // If still active, restart to keep listening
+      if (listeningActiveRef.current && !cancelRef.current) {
+        try {
+          recognition.start();
+        } catch {
+          listeningActiveRef.current = false;
+          setIsListening(false);
+        }
+      }
+    };
+
+    recognition.onerror = () => {
+      if (listeningActiveRef.current && !cancelRef.current) {
+        try {
+          recognition.start();
+        } catch {
+          listeningActiveRef.current = false;
+          setIsListening(false);
+        }
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      listeningActiveRef.current = false;
+      setIsListening(false);
+    }
+  }, [onLanguageSelect, onClose]);
+
+  /* ── play "which language?" prompts then start listening ──────── */
+  const runAskPrompts = useCallback(async () => {
+    if (cancelRef.current) return;
+    setSpeaking('ask');
+    setPhase('asking');
+    const isCancelled = () => cancelRef.current || mutedRef.current;
+
+    for (let i = 0; i < ASK_PROMPTS.length; i++) {
+      if (isCancelled()) return;
+      const { text, ttsLang } = ASK_PROMPTS[i];
+      await playClip(text, ttsLang, isCancelled);
+      if (isCancelled()) return;
+      await wait(200);
+    }
+
+    setSpeaking(null);
+    setPhase('listening');
+    running.current = false;
+    // Start listening now
+    startListening();
+  }, [startListening]);
 
   /* ── main tour ───────────────────────────────────────────────── */
   const runTour = useCallback(async () => {
     if (running.current) return;
     running.current   = true;
     cancelRef.current = false;
+    setPhase('announcing');
     const isCancelled = () => cancelRef.current || mutedRef.current;
 
-    // Each language announces itself fully in its own language
-    // (intro sentence + language number/name — all in that language)
+    // Each language announces itself
     for (let i = 0; i < LANGUAGES.length; i++) {
       if (isCancelled()) break;
       setSpeaking(i);
@@ -140,9 +325,15 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
       await wait(300);
     }
 
-    setSpeaking(null);
-    running.current = false;
-  }, []);
+    if (!cancelRef.current && !mutedRef.current) {
+      // After all announcements, ask which language they want
+      await runAskPrompts();
+    } else {
+      setSpeaking(null);
+      running.current = false;
+      setPhase('idle');
+    }
+  }, [runAskPrompts]);
 
   /* ── open / close ────────────────────────────────────────────── */
   useEffect(() => {
@@ -153,26 +344,29 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
     setSelected(null);
     setSpeaking(null);
     cancelRef.current = false;
+    setPhase('idle');
     runTour();
     return () => stopAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
 
   /* ── mute toggle ─────────────────────────────────────────────── */
   const handleMuteToggle = () => {
     const next = !muted;
     setMuted(next);
     mutedRef.current = next;
-    if (next) { stopAll(); }
-    else      { runTour(); }
+    if (next) {
+      stopAll();
+    } else {
+      cancelRef.current = false;
+      runTour();
+    }
   };
 
   /* ── card click ──────────────────────────────────────────────── */
   const handleSelect = (lang: Language) => {
     stopAll();
     setSelected(lang);
-    // Confirm in selected language
     if (!mutedRef.current) {
       cancelRef.current = false;
       playClip(lang.nativeName, lang.ttsLang, () => false);
@@ -189,10 +383,12 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
   };
 
   /* ── derived ─────────────────────────────────────────────────── */
-  const isActive   = speaking !== null;
-  const activeName = isActive && speaking! >= 0 ? LANGUAGES[speaking!]?.name : null;
-  const progress   = isActive && speaking! >= 0
-    ? Math.round(((speaking! + 1) / LANGUAGES.length) * 100)
+  const isAnnouncingLang = typeof speaking === 'number' && speaking >= 0;
+  const activeName = isAnnouncingLang && typeof speaking === 'number'
+    ? LANGUAGES[speaking]?.name
+    : null;
+  const progress = isAnnouncingLang && typeof speaking === 'number'
+    ? Math.round(((speaking + 1) / LANGUAGES.length) * 100)
     : 0;
 
   return (
@@ -206,6 +402,11 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
         @keyframes ls-bar {
           0%,100% { transform: scaleY(1);   }
           50%     { transform: scaleY(2.6); }
+        }
+        @keyframes ls-mic-pulse {
+          0%   { box-shadow: 0 0 0 0   rgba(239,68,68,.6); }
+          70%  { box-shadow: 0 0 0 18px rgba(239,68,68,0); }
+          100% { box-shadow: 0 0 0 0   rgba(239,68,68,0); }
         }
         .ls-card-on {
           border-color: #6366f1 !important;
@@ -223,6 +424,20 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
         .ls-wave span:nth-child(3){ animation-delay:.2s;  height:9px;  }
         .ls-wave span:nth-child(4){ animation-delay:.3s;  height:15px; }
         .ls-wave span:nth-child(5){ animation-delay:.4s;  height:10px; }
+        .ls-mic-pulse {
+          animation: ls-mic-pulse 1.2s ease-out infinite;
+        }
+        .ls-red-wave span {
+          display: inline-block;
+          width: 3px; border-radius: 2px;
+          background: #ef4444;
+          animation: ls-bar .6s ease-in-out infinite;
+        }
+        .ls-red-wave span:nth-child(1){ animation-delay:0s;   height:7px; }
+        .ls-red-wave span:nth-child(2){ animation-delay:.1s;  height:13px; }
+        .ls-red-wave span:nth-child(3){ animation-delay:.2s;  height:9px;  }
+        .ls-red-wave span:nth-child(4){ animation-delay:.3s;  height:15px; }
+        .ls-red-wave span:nth-child(5){ animation-delay:.4s;  height:10px; }
       `}</style>
 
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -238,7 +453,7 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
               </DialogTitle>
               <span className="flex-1 flex justify-end gap-1">
                 {/* Stop button — only while tour is running */}
-                {isActive && (
+                {(phase === 'announcing' || phase === 'asking') && (
                   <button
                     onClick={stopAll}
                     title="Stop announcement"
@@ -259,11 +474,9 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
               </span>
             </div>
 
-
-            {/* ── LIVE STATUS BAR ── */}
-            {isActive && !muted && (
+            {/* ── LIVE STATUS BAR — Announcing ── */}
+            {phase === 'announcing' && !muted && isAnnouncingLang && (
               <div className="mt-3 px-4 py-3 bg-indigo-50 rounded-2xl border border-indigo-100 space-y-2">
-                {/* wave + label */}
                 <div className="flex items-center justify-center gap-3">
                   <div className="ls-wave flex items-end gap-[3px]">
                     <span/><span/><span/><span/><span/>
@@ -275,20 +488,60 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
                     <span/><span/><span/><span/><span/>
                   </div>
                 </div>
+                <div>
+                  <div className="h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-indigo-400 mt-1">
+                    Language {(speaking as number) + 1} of {LANGUAGES.length}
+                  </p>
+                </div>
+              </div>
+            )}
 
-                {/* progress bar */}
-                {speaking !== null && speaking >= 0 && (
+            {/* ── LIVE STATUS BAR — Asking which language ── */}
+            {phase === 'asking' && !muted && (
+              <div className="mt-3 px-4 py-3 bg-amber-50 rounded-2xl border border-amber-200 space-y-1">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="ls-wave flex items-end gap-[3px]">
+                    <span/><span/><span/><span/><span/>
+                  </div>
+                  <span className="text-sm font-semibold text-amber-700">
+                    🎙️ Asking which language you want…
+                  </span>
+                  <div className="ls-wave flex items-end gap-[3px]">
+                    <span/><span/><span/><span/><span/>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── LIVE STATUS BAR — Listening for voice ── */}
+            {phase === 'listening' && isListening && (
+              <div className="mt-3 px-4 py-4 bg-red-50 rounded-2xl border border-red-200 space-y-2">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500 ls-mic-pulse flex items-center justify-center">
+                    <Mic className="w-5 h-5 text-white" />
+                  </div>
                   <div>
-                    <div className="h-1.5 bg-indigo-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-center text-indigo-400 mt-1">
-                      Language {speaking! + 1} of {LANGUAGES.length}
+                    <p className="text-sm font-bold text-red-700">
+                      🎤 Listening… Say a language name!
+                    </p>
+                    <p className="text-xs text-red-500 mt-0.5">
+                      e.g. "Hindi", "Telugu", "English", "தமிழ்", "हिंदी"
                     </p>
                   </div>
+                  <div className="ls-red-wave flex items-end gap-[3px]">
+                    <span/><span/><span/><span/><span/>
+                  </div>
+                </div>
+                {voiceHint && (
+                  <p className="text-xs text-center text-red-600 font-medium bg-red-100 rounded-lg py-1 px-3">
+                    {voiceHint}
+                  </p>
                 )}
               </div>
             )}
@@ -335,11 +588,13 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
             })}
           </div>
 
-          {/* ── INFO ── */}
+          {/* ── INFO BAR ── */}
           <div className="flex items-center justify-center gap-3 mt-5 p-3 bg-indigo-50 rounded-xl">
             <Mic className="w-4 h-4 text-indigo-600 shrink-0" />
             <span className="text-sm text-indigo-700 font-medium">
-              Voice recognition and text-to-speech will use your selected language
+              {isListening
+                ? '🎙️ Speak now — say any language name and it will be selected automatically!'
+                : 'Voice recognition and text-to-speech will use your selected language'}
             </span>
           </div>
 

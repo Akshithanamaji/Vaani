@@ -1,13 +1,49 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { INDIAN_STATES, State, District } from '@/lib/indian-locations';
-import { MapPin, Search, ChevronRight, ArrowLeft, CheckCircle2, Building2 } from 'lucide-react';
+import { MapPin, Search, ChevronRight, ArrowLeft, CheckCircle2, Building2, Mic, MicOff, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { speakText } from '@/lib/voice-utils';
+
+// Translation cache: lang -> (english_name -> translated_name)
+const translationCache: Record<string, Record<string, string>> = {};
+
+/** Fetch translations from /api/translate for any texts missing from cache */
+async function fetchTranslations(texts: string[], lang: string): Promise<void> {
+  if (lang === 'en' || texts.length === 0) return;
+  if (!translationCache[lang]) translationCache[lang] = {};
+  const missing = texts.filter(t => !translationCache[lang][t]);
+  if (missing.length === 0) return;
+  try {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: missing, target: lang }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.translations && Array.isArray(data.translations)) {
+      missing.forEach((text, idx) => {
+        translationCache[lang][text] = data.translations[idx] || text;
+      });
+    }
+  } catch {
+    // silently fail — will show English fallback
+  }
+}
+import {
+  speakText,
+  initVoiceRecognition,
+  startVoiceRecording,
+  stopVoiceRecording,
+  abortVoiceRecording,
+  transcribeWithGroqWhisper,
+  type VoiceRecognitionResult
+} from '@/lib/voice-utils';
+import { useAudioRecorder } from '@/lib/audio-recorder';
 
 interface LocationSelectorProps {
   serviceName: string;
@@ -21,6 +57,176 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
   const [step, setStep] = useState<'state' | 'district'>('state');
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // Bump this counter to trigger a re-render after translations load into cache
+  const [translateVersion, setTranslateVersion] = useState(0);
+
+  // Voice recording state
+  const [listeningStatus, setListeningStatus] = useState<'idle' | 'listening' | 'processing'>('idle');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [shouldTranscribeBlob, setShouldTranscribeBlob] = useState(false);
+  const recognitionRef = useRef<any | null>(null);
+
+  const [useGroqWhisper] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const hasWebSpeech = !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition;
+    return !hasWebSpeech;
+  });
+
+  const { isRecording, audioBlob, startRecording, stopRecording, resetRecording } = useAudioRecorder();
+
+  // Voice cleanup
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
+      }
+    };
+  }, []);
+
+  // Handle Groq whisper transcription
+  useEffect(() => {
+    if (shouldTranscribeBlob && audioBlob) {
+      setShouldTranscribeBlob(false);
+      const transcribeNow = async () => {
+        const langCode = (language || 'en-IN').split('-')[0];
+        const result = await transcribeWithGroqWhisper(audioBlob, langCode, step === 'state' ? 'state' : 'district');
+        resetRecording();
+        if (result.success && result.text) {
+          handleVoiceTranscript(result.text);
+        } else {
+          setVoiceError("Transcription failed");
+          setListeningStatus('idle');
+        }
+      };
+      transcribeNow();
+    }
+  }, [shouldTranscribeBlob, audioBlob]);
+
+  const handleVoiceTranscript = (transcript: string) => {
+    const matchText = transcript.toLowerCase().trim();
+    setSearchQuery(matchText);
+    setListeningStatus('idle');
+    setVoiceError(null);
+
+    // Give react time to update searchQuery which filters the list, but we can also match manually
+    if (step === 'state') {
+      const match = INDIAN_STATES.find(s =>
+        s.name.toLowerCase() === matchText ||
+        Object.values(s).some(v => typeof v === 'string' && v.toLowerCase() === matchText)
+      );
+      if (match) {
+        handleStateSelect(match);
+      } else {
+        const partials = INDIAN_STATES.filter(state =>
+          state.name.toLowerCase().includes(matchText) ||
+          Object.entries(state).some(([key, value]) =>
+            key.startsWith('name') && typeof value === 'string' && value.toLowerCase().includes(matchText)
+          )
+        );
+        if (partials.length === 1) {
+          handleStateSelect(partials[0]);
+        }
+      }
+    } else {
+      if (selectedState) {
+        const match = selectedState.districts.find(d =>
+          d.name.toLowerCase() === matchText ||
+          Object.values(d).some(v => typeof v === 'string' && v.toLowerCase() === matchText)
+        );
+        if (match) {
+          handleDistrictSelect(match);
+        } else {
+          const partials = selectedState.districts.filter(district =>
+            district.name.toLowerCase().includes(matchText) ||
+            Object.entries(district).some(([key, value]) =>
+              key.startsWith('name') && typeof value === 'string' && value.toLowerCase().includes(matchText)
+            )
+          );
+          if (partials.length === 1) {
+            handleDistrictSelect(partials[0]);
+          }
+        }
+      }
+    }
+  };
+
+  const handleStartListening = async () => {
+    if (isRecording || listeningStatus !== 'idle') return;
+    setVoiceError(null);
+    setSearchQuery('');
+
+    if (!useGroqWhisper) {
+      setListeningStatus('listening');
+      if (recognitionRef.current) {
+        try { abortVoiceRecording(recognitionRef.current); } catch (e) { }
+        recognitionRef.current = null;
+      }
+
+      const recognition = initVoiceRecognition(
+        language,
+        (result: VoiceRecognitionResult) => {
+          if (result.transcript) {
+            if (result.isFinal) {
+              setListeningStatus('processing');
+              stopVoiceRecording(recognitionRef.current);
+              handleVoiceTranscript(result.transcript);
+            } else {
+              setSearchQuery(result.transcript);
+            }
+          }
+        },
+        (error: string) => {
+          if (!error.includes('aborted')) {
+            setListeningStatus('idle');
+            setVoiceError('Could not recognize voice. Try again.');
+          }
+        },
+        () => { setListeningStatus('idle'); },
+        () => { setListeningStatus('listening'); }
+      );
+
+      if (!recognition) {
+        setVoiceError('Voice recognition not supported');
+        setListeningStatus('idle');
+        return;
+      }
+      recognitionRef.current = recognition;
+      try { startVoiceRecording(recognitionRef.current); } catch (e) { setListeningStatus('idle'); }
+      return;
+    }
+
+    setListeningStatus('listening');
+    try { await startRecording(); } catch (e) { setListeningStatus('idle'); }
+  };
+
+  const handleStopListening = async () => {
+    if (useGroqWhisper) {
+      if (isRecording) {
+        stopRecording();
+        setListeningStatus('processing');
+        setShouldTranscribeBlob(true);
+      }
+    } else {
+      if (recognitionRef.current) {
+        try { stopVoiceRecording(recognitionRef.current); } catch (e) { }
+      }
+      setListeningStatus('processing');
+    }
+  };
+
+  // Pre-fetch translations for all state names when language changes
+  useEffect(() => {
+    if (language === 'en') return;
+    const stateNames = INDIAN_STATES.map(s => s.name);
+    fetchTranslations(stateNames, language).then(() => setTranslateVersion(v => v + 1));
+  }, [language]);
+
+  // Pre-fetch translations for district names when a state is selected or language changes
+  useEffect(() => {
+    if (language === 'en' || !selectedState) return;
+    const districtNames = selectedState.districts.map(d => d.name);
+    fetchTranslations(districtNames, language).then(() => setTranslateVersion(v => v + 1));
+  }, [selectedState, language]);
 
   // Voice effect when step changes
   useEffect(() => {
@@ -276,39 +482,71 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
     }
   };
 
-  const getStateName = (state: State) => {
+  /** Get static pre-translated state name for the current language */
+  const getStaticStateName = (state: State): string => {
     switch (language) {
-      case 'hi': return state.nameHi || state.name;
-      case 'te': return state.nameTe || state.name;
-      case 'kn': return state.nameKn || state.name;
-      case 'ta': return state.nameTa || state.name;
-      case 'ml': return state.nameMl || state.name;
-      case 'mr': return state.nameMr || state.name;
-      case 'bn': return state.nameBn || state.name;
-      case 'gu': return state.nameGu || state.name;
-      case 'or': return state.nameOr || state.name;
-      case 'pa': return state.namePa || state.name;
-      case 'ur': return state.nameUr || state.name;
+      case 'hi': return state.nameHi || '';
+      case 'te': return state.nameTe || '';
+      case 'kn': return state.nameKn || '';
+      case 'ta': return state.nameTa || '';
+      case 'ml': return state.nameMl || '';
+      case 'mr': return state.nameMr || '';
+      case 'bn': return state.nameBn || '';
+      case 'gu': return state.nameGu || '';
+      case 'or': return state.nameOr || '';
+      case 'pa': return state.namePa || '';
+      case 'ur': return state.nameUr || '';
       default: return state.name;
     }
   };
 
-  const getDistrictName = (district: District) => {
+  /** Get static pre-translated district name for the current language */
+  const getStaticDistrictName = (district: District): string => {
     switch (language) {
-      case 'hi': return district.nameHi || district.name;
-      case 'te': return district.nameTe || district.name;
-      case 'kn': return district.nameKn || district.name;
-      case 'ta': return district.nameTa || district.name;
-      case 'ml': return district.nameMl || district.name;
-      case 'mr': return district.nameMr || district.name;
-      case 'bn': return district.nameBn || district.name;
-      case 'gu': return district.nameGu || district.name;
-      case 'or': return district.nameOr || district.name;
-      case 'pa': return district.namePa || district.name;
-      case 'ur': return district.nameUr || district.name;
+      case 'hi': return district.nameHi || '';
+      case 'te': return district.nameTe || '';
+      case 'kn': return district.nameKn || '';
+      case 'ta': return district.nameTa || '';
+      case 'ml': return district.nameMl || '';
+      case 'mr': return district.nameMr || '';
+      case 'bn': return district.nameBn || '';
+      case 'gu': return district.nameGu || '';
+      case 'or': return district.nameOr || '';
+      case 'pa': return district.namePa || '';
+      case 'ur': return district.nameUr || '';
       default: return district.name;
     }
   };
+
+  /**
+   * Returns the best available name for a state:
+   * 1. Pre-translated static data  2. Dynamic cache  3. English fallback
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getStateName = useCallback((state: State): string => {
+    if (language === 'en') return state.name;
+    const staticName = getStaticStateName(state);
+    if (staticName) return staticName;
+    // Check dynamic translation cache
+    const cached = translationCache[language]?.[state.name];
+    return cached || state.name;
+    // translateVersion included so this re-computes when cache updates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, translateVersion]);
+
+  /**
+   * Returns the best available name for a district:
+   * 1. Pre-translated static data  2. Dynamic cache  3. English fallback
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getDistrictName = useCallback((district: District): string => {
+    if (language === 'en') return district.name;
+    const staticName = getStaticDistrictName(district);
+    if (staticName) return staticName;
+    const cached = translationCache[language]?.[district.name];
+    return cached || district.name;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, translateVersion]);
 
   return (
     <div className="min-h-screen bg-black p-4 md:p-8">
@@ -370,9 +608,33 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
             placeholder={step === 'state' ? t.searchState : t.searchDistrict}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-14 text-lg border-2 border-white/20 bg-white/10 text-white placeholder-gray-500 focus:border-purple-500 rounded-2xl"
+            className="pl-12 pr-16 h-14 text-lg border-2 border-white/20 bg-white/10 text-white placeholder-gray-500 focus:border-purple-500 rounded-2xl cursor-text"
           />
+          <button
+            onClick={listeningStatus === 'listening' ? handleStopListening : handleStartListening}
+            disabled={listeningStatus === 'processing'}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${listeningStatus === 'listening'
+              ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse'
+              : listeningStatus === 'processing'
+                ? 'bg-amber-500/20 text-amber-400'
+                : 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30'
+              }`}
+          >
+            {listeningStatus === 'listening' ? (
+              <MicOff className="w-5 h-5" />
+            ) : listeningStatus === 'processing' ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </button>
         </div>
+
+        {voiceError && (
+          <div className="mb-4 p-3 bg-red-900/50 border border-red-700/50 rounded-xl text-red-400 text-sm">
+            {voiceError}
+          </div>
+        )}
 
         {/* Content */}
         <Card className="bg-black shadow-xl rounded-3xl border border-neutral-800 overflow-hidden">

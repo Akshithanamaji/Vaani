@@ -17,7 +17,39 @@ function categorizeField(fieldId: string, fieldLabel: string): FieldCategory {
     const id = fieldId.toLowerCase().replace(/-/g, '_');
     const label = fieldLabel.toLowerCase();
 
-    // ── Multi-document proof fields (accept Aadhaar, PAN, Voter ID, etc.) ──────
+    // ── 1. Specific document fields (Check these FIRST) ────────────────────────
+    const specificDocs: Record<string, string> = {
+        aadhaar_card: 'Aadhaar card (has 12-digit UID number, issued by UIDAI)',
+        aadhar_card: 'Aadhaar card (has 12-digit UID number, issued by UIDAI)',
+        pan_card: 'PAN card (Permanent Account Number card, has 10-character alphanumeric PAN)',
+        voter_card: 'Voter ID card (Election Commission of India)',
+        passport_copy: 'Indian Passport',
+        driving_licence: 'Driving Licence',
+        ration_card_doc: 'Ration Card',
+        photo: 'recent passport-size photograph of a person with face clearly visible',
+        photograph: 'recent passport-size photograph of a person with face clearly visible',
+        passport_photo: 'recent passport-size photograph of a person with face clearly visible',
+        selfie: 'recent passport-size photograph of a person with face clearly visible',
+        signature: 'signature on a white paper',
+        sign_doc: 'signature on a white paper',
+        sign: 'signature on a white paper',
+        bank_passbook: 'bank passbook or bank statement',
+        marksheet: 'academic marksheet or grade sheet',
+        birth_certificate: 'birth certificate from hospital or municipality',
+        death_certificate: 'death certificate',
+        medical_certificate: 'medical certificate from a registered doctor',
+        disability_certificate: 'disability certificate (UDID)',
+        land_document: 'land ownership document or patta',
+        property_doc: 'property ownership document',
+    };
+
+    for (const [k, desc] of Object.entries(specificDocs)) {
+        if (id.includes(k) || label.includes(k)) {
+            return { type: 'specific', label: fieldLabel, description: desc };
+        }
+    }
+
+    // ── 2. Multi-document proof fields (accept Aadhaar, PAN, Voter ID, etc.) ──────
     const multiProofPatterns = [
         'poi', 'proof_of_identity', 'identity_proof', 'id_proof',
         'poa', 'proof_of_address', 'address_proof', 'residence_proof',
@@ -68,34 +100,6 @@ function categorizeField(fieldId: string, fieldLabel: string): FieldCategory {
             label: fieldLabel,
             examples: 'Aadhaar card, PAN card, Voter ID, passport, driving licence, or any valid government-issued identity or address document',
         };
-    }
-
-    // ── Specific document fields ────────────────────────────────────────────────
-    const specificDocs: Record<string, string> = {
-        aadhaar_card: 'Aadhaar card (has 12-digit UID number, issued by UIDAI)',
-        aadhar_card: 'Aadhaar card (has 12-digit UID number, issued by UIDAI)',
-        pan_card: 'PAN card (Permanent Account Number card, has 10-character alphanumeric PAN)',
-        voter_card: 'Voter ID card (Election Commission of India)',
-        passport_copy: 'Indian Passport',
-        driving_licence: 'Driving Licence',
-        ration_card_doc: 'Ration Card',
-        photo: 'recent passport-size photograph of a person with face clearly visible',
-        photograph: 'recent passport-size photograph of a person with face clearly visible',
-        signature: 'signature on a white paper',
-        bank_passbook: 'bank passbook or bank statement',
-        marksheet: 'academic marksheet or grade sheet',
-        birth_certificate: 'birth certificate from hospital or municipality',
-        death_certificate: 'death certificate',
-        medical_certificate: 'medical certificate from a registered doctor',
-        disability_certificate: 'disability certificate (UDID)',
-        land_document: 'land ownership document or patta',
-        property_doc: 'property ownership document',
-    };
-
-    for (const [k, desc] of Object.entries(specificDocs)) {
-        if (id.includes(k) || k.includes(id)) {
-            return { type: 'specific', label: fieldLabel, description: desc };
-        }
     }
 
     // fallback — accept anything that looks like a document

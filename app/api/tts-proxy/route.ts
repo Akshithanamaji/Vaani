@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Server-side proxy for Google Translate TTS
- * This bypasses CORS restrictions
+ *
+ * Uses client=gtx (Google Translate Extension) which routes through
+ * Google's modern neural TTS engine — gives identical clear voice
+ * quality for all 12 Indian languages (same warmth as English).
+ *
+ * client=tw-ob (old Twitter-bot client) was causing echo / double-sound
+ * artifacts on Devanagari and other Indian scripts.
  */
 export async function GET(request: NextRequest) {
     try {
@@ -17,29 +23,37 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Text parameter is required and cannot be empty' }, { status: 400 });
         }
 
-        // Extract language code (e.g., 'hi' from 'hi-IN')
+        // Extract base language code (e.g., 'hi' from 'hi-IN')
         const langCode = language.split('-')[0];
-
-        // Create Google Translate TTS URL
         const encodedText = encodeURIComponent(text);
-        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${langCode}&client=tw-ob`;
 
-        console.log(`[TTS Proxy] Fetching audio for language: ${langCode}, text length: ${text.length}`);
+        // Headers that mimic a real Chrome browser request
+        const browserHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://translate.google.com/',
+            'Accept': 'audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,*/*;q=0.5',
+            'Accept-Language': 'en-US,en;q=0.9',
+        };
 
-        // Fetch audio from Google
-        const response = await fetch(ttsUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Referer': 'https://translate.google.com/',
-            },
-        });
+        // ── PRIMARY: client=gtx — Google's modern neural TTS.
+        //   Produces consistent, clear voice tone for ALL languages.
+        //   ttsspeed=1 locks rate to normal so Indian scripts aren't faster/slower than English.
+        const gtxUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${langCode}&client=gtx&sl=${langCode}&ttsspeed=1`;
+
+        console.log(`[TTS Proxy] Trying gtx for lang=${langCode}, chars=${text.length}`);
+        let response = await fetch(gtxUrl, { headers: browserHeaders });
+
+        // ── FALLBACK: client=tw-ob if gtx fails (e.g. rate-limit / 403)
+        if (!response.ok) {
+            console.warn(`[TTS Proxy] gtx failed (${response.status}), falling back to tw-ob`);
+            const twObUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${langCode}&client=tw-ob`;
+            response = await fetch(twObUrl, { headers: browserHeaders });
+        }
 
         if (!response.ok) {
-            console.error(`[TTS Proxy] Google TTS returned status: ${response.status} for language: ${langCode}`);
-            
-            // Language not supported by Google TTS
+            console.error(`[TTS Proxy] Both TTS clients failed: status ${response.status}, lang=${langCode}`);
+
             if (response.status === 400 || response.status === 404) {
-                console.error(`[TTS Proxy] Language ${langCode} may not be supported by Google TTS`);
                 return NextResponse.json({
                     error: 'Language not supported',
                     language: langCode,
@@ -47,7 +61,7 @@ export async function GET(request: NextRequest) {
                     message: `Google TTS does not support language code: ${langCode}`
                 }, { status: 400 });
             }
-            
+
             return NextResponse.json({
                 error: 'Failed to fetch audio from Google',
                 status: response.status,
@@ -55,11 +69,9 @@ export async function GET(request: NextRequest) {
             }, { status: response.status });
         }
 
-        // Get audio data
         const audioBuffer = await response.arrayBuffer();
-        console.log(`[TTS Proxy] Successfully fetched audio, size: ${audioBuffer.byteLength} bytes`);
+        console.log(`[TTS Proxy] OK — lang=${langCode}, bytes=${audioBuffer.byteLength}`);
 
-        // Return audio with proper headers
         return new NextResponse(audioBuffer, {
             status: 200,
             headers: {
