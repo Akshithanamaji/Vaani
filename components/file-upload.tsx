@@ -74,8 +74,8 @@ export function FileUpload({
       if (result.isValid) {
         setIsFileValid(true);
         setFileError(null);
-        onValidationChange?.(true); // unblock next
         onFileChange(file.name, file);
+        onValidationChange?.(true); // unblock next after state update signal
       } else {
         setIsFileValid(false);
         setFileError(result.errorMessage || `Wrong file. Please upload your ${label}.`);
@@ -91,8 +91,8 @@ export function FileUpload({
       // On API error — accept the file anyway (graceful fallback)
       setIsFileValid(true);
       setFileError(null);
-      onValidationChange?.(true);
       onFileChange(file.name, file);
+      onValidationChange?.(true);
     } finally {
       setIsValidating(false);
     }

@@ -738,7 +738,13 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                       currentFile={formData[currentField?.id]}
                       onFileChange={async (fileName, file) => {
                         if (file) {
-                          // Convert file to base64 for admin viewing
+                          // 1. Set placeholder immediately so handleNext doesn't see "empty" field
+                          setFormData(prev => ({
+                            ...prev,
+                            [currentField?.id]: 'loading_file...'
+                          }));
+
+                          // 2. Convert to base64 for real storage
                           const reader = new FileReader();
                           reader.onloadend = () => {
                             setFormData(prev => ({
@@ -757,13 +763,15 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                         console.log('[VoiceForm] File selected:', fileName);
                       }}
                       onValidationChange={(valid) => {
+                        console.log('[VoiceForm] onValidationChange:', valid);
                         setFileValidated(valid);
                         if (valid) {
                           setVoiceError(null);
                           // Auto-advance to next question if file is correctly validated
+                          // Wait a bit longer to ensure formData state 'loading_file...' is flushed
                           setTimeout(() => {
                             handleNext();
-                          }, 1500);
+                          }, 1000);
                         }
                       }}
                       error={voiceError}

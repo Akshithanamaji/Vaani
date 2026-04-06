@@ -549,8 +549,8 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
   }, [language, translateVersion]);
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-black p-4 md:p-10">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
@@ -561,7 +561,7 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
             <span className="font-medium">{step === 'state' ? t.cancel : t.back}</span>
           </button>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+          <div className="flex flex-row items-center justify-between gap-4 mb-2">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <MapPin className="w-6 h-6 text-white" />
@@ -573,14 +573,11 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
             </div>
 
             {/* Language Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl self-start md:self-center">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t.language}:</span>
-              <span className="text-lg">{selectedLanguage?.flag}</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-white/5 rounded-2xl">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.language}:</span>
+              <span className="text-lg leading-none">{selectedLanguage?.flag}</span>
               <span className="text-sm font-bold text-white">
                 {selectedLanguage?.name}
-                {selectedLanguage?.nativeName && selectedLanguage.nativeName !== selectedLanguage.name && (
-                  <span className="ml-1 text-neutral-400 font-normal">({selectedLanguage.nativeName})</span>
-                )}
               </span>
             </div>
           </div>
@@ -588,27 +585,28 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
         </div>
 
         {/* Progress Indicator */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${step === 'state' ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white' : 'bg-green-500/20 text-green-400'}`}>
-            {step === 'district' ? <CheckCircle2 className="w-5 h-5" /> : <span className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">1</span>}
-            <span className="font-semibold text-sm">{t.selectState}</span>
+        <div className="flex items-center gap-3 mb-8">
+          <div className={`flex items-center gap-3 px-5 py-2.5 rounded-full transition-all duration-300 ${step === 'state' ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-lg' : 'bg-[#1a1a1a] text-gray-400'}`}>
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 'state' ? 'bg-white/20' : 'bg-white/5'}`}>1</span>
+            <span className="font-bold text-sm tracking-tight">{t.selectState}</span>
+            {step === 'district' && <CheckCircle2 className="w-4 h-4 ml-1" />}
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-600" />
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${step === 'district' ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white' : 'bg-white/10 text-gray-500'}`}>
-            <span className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">2</span>
-            <span className="font-semibold text-sm">{t.selectDistrict}</span>
+          <ChevronRight className="w-4 h-4 text-gray-700" />
+          <div className={`flex items-center gap-3 px-5 py-2.5 rounded-full transition-all duration-300 ${step === 'district' ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-lg' : 'bg-[#1a1a1a] text-gray-500'}`}>
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 'district' ? 'bg-white/20' : 'bg-white/5'}`}>2</span>
+            <span className="font-bold text-sm tracking-tight">{t.selectDistrict}</span>
           </div>
         </div>
 
         {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div className="relative mb-10 group">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 transition-colors group-focus-within:text-cyan-400" />
           <Input
             type="text"
             placeholder={step === 'state' ? t.searchState : t.searchDistrict}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 pr-16 h-14 text-lg border-2 border-white/20 bg-white/10 text-white placeholder-gray-500 focus:border-purple-500 rounded-2xl cursor-text"
+            className="pl-14 pr-16 h-16 text-lg border-white/5 bg-[#1a1a1a] text-white placeholder-gray-600 focus:border-cyan-500/50 focus:ring-0 rounded-2xl transition-all shadow-inner"
           />
           <button
             onClick={listeningStatus === 'listening' ? handleStopListening : handleStartListening}
@@ -636,12 +634,12 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
           </div>
         )}
 
-        {/* Content */}
-        <Card className="bg-black shadow-xl rounded-3xl border border-neutral-800 overflow-hidden">
-          <div className="p-6">
+        {/* Content Card with strict 3 column layout */}
+        <Card className="bg-[#0a0a0a] shadow-2xl rounded-[2rem] border border-white/5 overflow-hidden">
+          <div className="p-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                <Building2 className="w-6 h-6 text-cyan-400" />
                 {step === 'state' ? t.statesUnion : `${t.districtsIn} ${selectedState ? getStateName(selectedState) : ''}`}
               </h2>
               <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/5">
@@ -654,7 +652,7 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
             </div>
 
             {step === 'state' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[550px] overflow-y-auto pr-3 custom-scrollbar">
                 {filteredStates.length === 0 ? (
                   <p className="col-span-full text-center py-8 text-neutral-500">{t.noResults}</p>
                 ) : (
@@ -679,7 +677,7 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[550px] overflow-y-auto pr-3 custom-scrollbar">
                 {filteredDistricts.length === 0 ? (
                   <p className="col-span-full text-center py-8 text-neutral-500">{t.noResults}</p>
                 ) : (
@@ -687,16 +685,16 @@ export function LocationSelector({ serviceName, onLocationSelected, onCancel }: 
                     <button
                       key={idx}
                       onClick={() => handleDistrictSelect(district)}
-                      className="group flex items-center justify-between p-4 bg-neutral-900 hover:bg-neutral-800 rounded-xl border-2 border-neutral-800 hover:border-green-500/50 transition-all text-left"
+                      className="group flex items-center justify-between p-5 bg-[#121212] hover:bg-[#1a1a1a] rounded-2xl border border-white/5 hover:border-green-500/30 transition-all text-left w-full shadow-lg"
                     >
                       <div>
-                        <p className="font-bold text-white group-hover:text-green-400">{getDistrictName(district)}</p>
+                        <p className="font-bold text-lg text-white group-hover:text-green-400 tracking-tight">{getDistrictName(district)}</p>
                         {language !== 'en' && getDistrictName(district) !== district.name && (
-                          <p className="text-xs text-neutral-500 mt-0.5">{district.name}</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{district.name}</p>
                         )}
                       </div>
-                      <div className="w-8 h-8 bg-neutral-800 group-hover:bg-green-500/20 rounded-full flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4 text-neutral-500 group-hover:text-green-400" />
+                      <div className="w-8 h-8 shrink-0 bg-white/5 group-hover:bg-green-500/20 rounded-full flex items-center justify-center ml-3 transition-colors">
+                        <CheckCircle2 className="w-4 h-4 text-gray-600 group-hover:text-green-400" />
                       </div>
                     </button>
                   ))

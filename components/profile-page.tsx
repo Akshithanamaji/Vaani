@@ -52,21 +52,8 @@ export function ProfilePage({ email, onLogout, language }: ProfilePageProps) {
 
         <Card className="p-8 bg-black border border-neutral-800">
           <div className="space-y-6">
-            {/* Email Section */}
-            <div className="pb-6 border-b border-neutral-800">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <Mail size={20} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-400">{t.emailLabel}</p>
-                  <p className="text-lg font-semibold text-white">{email}</p>
-                </div>
-              </div>
-              <p className="text-xs text-neutral-500">{t.emailVerified}</p>
-            </div>
-
             {/* Profile Information */}
+
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-white">{t.profileInfo}</h2>

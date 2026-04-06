@@ -10,18 +10,18 @@ import { translations } from '@/lib/translations';
 
 // Sign-in page voice instructions in all 12 supported languages
 const signInVoiceInstructions: Record<string, string> = {
-  en: 'Welcome to Vaani AI. Please enter your full name, phone number, and email address to get started. You can tap the microphone button next to each field to fill it using your voice.',
-  hi: 'वानी एआई में आपका स्वागत है। शुरू करने के लिए कृपया अपना पूरा नाम, फ़ोन नंबर और ईमेल पता दर्ज करें। आप प्रत्येक फ़ील्ड के बगल में माइक्रोफ़ोन बटन दबाकर अपनी आवाज़ से भर सकते हैं।',
-  te: 'వానీ AI కు స్వాగతం. ప్రారంభించడానికి దయచేసి మీ పూర్తి పేరు, ఫోన్ నంబర్ మరియు ఇమెయిల్ చిరునామా నమోదు చేయండి. మీ వాయిస్ ద్వారా నింపడానికి ప్రతి ఫీల్డ్ పక్కన మైక్రోఫోన్ బటన్ నొక్కండి.',
-  kn: 'ವಾಣಿ AI ಗೆ ಸ್ವಾಗತ. ಪ್ರಾರಂಭಿಸಲು ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರು, ಫೋನ್ ನಂಬರ್ ಮತ್ತು ಇಮೇಲ್ ವಿಳಾಸ ನಮೂದಿಸಿ. ನಿಮ್ಮ ಧ್ವನಿಯಿಂದ ತುಂಬಿಸಲು ಪ್ರತಿ ಕ್ಷೇತ್ರದ ಪಕ್ಕದ ಮೈಕ್ರೊಫೋನ್ ಬಟನ್ ಒತ್ತಿರಿ.',
-  ta: 'வாணி AI க்கு வரவேற்கிறோம். தொடங்க உங்கள் முழு பெயர், தொலைபேசி எண் மற்றும் மின்னஞ்சல் முகவரியை உள்ளிடவும். உங்கள் குரலால் நிரப்ப ஒவ்வொரு புலத்தின் அருகே உள்ள மைக்ரோபோன் பொத்தானை அழுத்தவும்.',
-  ml: 'വാണി AI-ലേക്ക് സ്വാഗതം. ആരംഭിക്കാൻ നിങ്ങളുടെ പൂർണ്ണ നാമം, ഫോൺ നമ്പർ, ഇമെയിൽ വിലാസം എന്നിവ നൽകുക. ശബ്ദം ഉപയോഗിച്ച് പൂരിപ്പിക്കാൻ ഓരോ ഫീൽഡിന്റെ അടുത്തുള്ള മൈക്രോഫോൺ ബട്ടൺ അമർത്തുക.',
-  mr: 'वाणी AI मध्ये स्वागत आहे. सुरुवात करण्यासाठी कृपया आपले पूर्ण नाव, फोन नंबर आणि ईमेल पत्ता प्रविष्ट करा. आपल्या आवाजाने भरण्यासाठी प्रत्येक फील्डच्या शेजारील मायक्रोफोन बटण दाबा.',
-  bn: 'ভানী AI তে স্বাগতম। শুরু করতে অনুগ্রহ করে আপনার পূর্ণ নাম, ফোন নম্বর এবং ইমেইল ঠিকানা লিখুন। আপনার কণ্ঠস্বর দিয়ে পূরণ করতে প্রতিটি ক্ষেত্রের পাশের মাইক্রোফোন বোতামে চাপুন।',
-  gu: 'વાણી AI માં આપનું સ્વાગત છે. શરૂ કરવા માટે કૃপા કરીને તમારું પૂરું નામ, ફોન નંબર અને ઈ-મેઈલ સરનામું દાખલ કરો. તમારા અવાજથી ભરવા માટે દરેક ફીલ્ડ પાસેના માઇક્રોફોન બટન દબાવો.',
-  or: 'ଭଣ୍ଡ AI କୁ ସ୍ୱାଗତ। ଆରମ୍ଭ କରିବାକୁ ଦୟାକରି ଆପଣଙ୍କ ପୂର୍ଣ ନାମ, ଫୋନ ନମ୍ବର ଏବଂ ଇ-ମେଲ ଠିକଣା ଦିଅନ୍ତୁ। ଆପଣଙ୍କ ଆୱାଜ ଦ୍ୱାରା ଭରିବା ପାଇଁ ପ୍ରତ୍ୟେକ ଫିଲ୍ଡ ପଆଶ ମାଇକ୍ରୋଫୋନ ବଟନ ଦବାନ୍ତୁ।',
-  pa: 'ਵਾਣੀ AI ਵਿੱਚ ਸ਼ਾਮਲ ਸਵਾਗਤ। ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਪੂਰਾ ਨਾਮ, ਫ਼ੋਨ ਨੰਬਰ ਅਤੇ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ। ਆਪਣੀ ਆਵਾਜ਼ ਨਾਲ ਭਰਨ ਲਈ ਹਰੇਕ ਖੇਤਰ ਦੇ ਨਾਲ ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਬਟਨ ਦਬਾਓ।',
-  ur: 'وانی AI میں خوش آمدید۔ شروع کرنے کے لیے براہ کرم اپنا پورا نام، فون نمبر اور ای میل پتہ درج کریں۔ اپنی آواز سے بھرنے کے لیے ہر فیلڈ کے ساتھ مائیکروفون بٹن دبائیں۔',
+  en: 'Welcome to Vaani AI. Tell us your full name and phone number to get started. I will listen to you automatically.',
+  hi: 'वानी एआई में आपका स्वागत है। शुरू करने के लिए अपना पूरा नाम और फोन नंबर बताएं। मैं आपकी बात अपने आप सुनूँगा।',
+  te: 'వానీ AI కు స్వాగతం. ప్రారంభించడానికి మీ పూర్తి పేరు మరియు ఫోన్ నంబర్ చెప్పండి. నేను ఆటోమేటిక్గా వింటాను.',
+  kn: 'ವಾಣಿ AI ಗೆ ಸ್ವಾಗತ. ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರು ಮತ್ತು ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ತಿಳಿಸಿ. ನಾನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಕೇಳುತ್ತೇನೆ.',
+  ta: 'வாணி AI-க்கு வரவேற்கிறோம். தொடங்குவதற்கு உங்கள் முழுப் பெயர் மற்றும் தொலைபேసి எண்ணைக் கூறுங்கள். நான் தானாகவே கேட்பேன்.',
+  ml: 'വാണി AI-ലേക്ക് സ്വാഗതം. തുടങ്ങാനായി നിങ്ങളുടെ മുഴുവൻ പേരും ഫോൺ നമ്പറും പറയുക. ഞാൻ അത് സ്വയം കേൾക്കും.',
+  mr: 'वाणी AI मध्ये तुमचे स्वागत आहे. सुरू करण्यासाठी तुमचे पूर्ण नाव आणि फोन नंबर सांगा. मी आपोआप ऐकेन.',
+  bn: 'ভানী AI-তে আপনাকে স্বাগতম। শুরু করতে আপনার পুরো নাম এবং ফোন নম্বর বলুন। আমি স্বয়ংক্রিয়ভাবে শুনব।',
+  gu: 'વાણી AI માં ફરી એકવાર સ્વાગત છે. શરૂ કરવા માટે તમારું નામ અને ફોન નંબર જણાવો. હું આપોઆપ સાંભળીશ.',
+  or: 'ଭାଣୀ AI କୁ ସ୍ୱାଗତ। ଆରମ୍ଭ କରିବା ପାଇଁ ଆପଣଙ୍କ ପୂର୍ଣ୍ଣ ନାମ ଏବଂ ଫୋନ୍ ନମ୍ବର କୁହନ୍ତୁ। ମୁଁ ଆପେ ଆପେ ଶୁଣିବି।',
+  pa: 'ਵਾਣੀ AI ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ। ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਆਪਣਾ ਪੂਰਾ ਨਾਮ ਅਤੇ ਫ਼ੋਨ ਨੰਬਰ ਦੱਸੋ। ਮੈਂ ਆਪਣੇ ਆਪ ਸੁਣਾਂਗਾ।',
+  ur: 'وانی AI میں خوش آمدید۔ شروع کرنے کے لیے اپنا پورا نام اور فون نمبر بتائیں۔ میں خود بخود سنوں گا۔',
 };
 
 // Field-level voice prompts in all 12 languages
@@ -97,8 +97,15 @@ interface EmailAuthProps {
 export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Use refs to avoid stale closures in voice callbacks
+  const nameRef = useRef('');
+  const phoneRef = useRef('');
+
+  useEffect(() => { nameRef.current = name; }, [name]);
+  useEffect(() => { phoneRef.current = phone; }, [phone]);
+
   const [error, setError] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [activeField, setActiveField] = useState<'name' | 'phone' | 'email' | null>(null);
@@ -113,11 +120,31 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
   const t = translations[langCode] || translations['en'];
   const bcp47 = langToBCP47[langCode] || 'en-IN';
 
-  // No auto-play on mount — browsers block audio without a direct user gesture.
-  // The Listen button below lets users trigger the instructions themselves.
+  const autoTriggerRef = useRef(false);
 
-  // Cleanup on unmount
+  // AUTO-VOICE FLOW ON MOUNT
   useEffect(() => {
+    if (autoTriggerRef.current) return;
+    autoTriggerRef.current = true;
+
+    const runAutoFlow = async () => {
+      // 1. Initial Greeting
+      const { speakText } = await import('@/lib/voice-utils');
+      const instruction = signInVoiceInstructions[langCode] || signInVoiceInstructions['en'];
+      
+      // Wait a tiny bit for the component to be fully visible
+      setTimeout(async () => {
+        setIsSpeaking(true);
+        await speakText(instruction, bcp47);
+        setIsSpeaking(false);
+
+        // 2. Start collecting NAME
+        startVoiceInput('name');
+      }, 1000);
+    };
+
+    runAutoFlow();
+
     return () => {
       if (recognitionRef.current) {
         import('@/lib/voice-utils').then(({ stopVoiceRecording }) => {
@@ -127,6 +154,7 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
       import('@/lib/voice-utils').then(({ stopSpeaking }) => stopSpeaking());
     };
   }, []);
+
 
   // Replay / stop instructions
   const handleListenInstructions = async () => {
@@ -209,7 +237,6 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
         if (!result.isFinal) {
           if (field === 'name') setName(text);
           else if (field === 'phone') setPhone(text);
-          else if (field === 'email') setEmail(text);
         } else {
           // Final Result: Call Gemini API to parse and format it cleanly
           setVoiceStatus('Formatting...');
@@ -227,14 +254,26 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
             const data = await response.json();
             const formattedText = data.success && data.transcript ? data.transcript : text;
 
-            if (field === 'name') setName(formattedText);
-            else if (field === 'phone') setPhone(formattedText);
-            else if (field === 'email') setEmail(formattedText);
+            if (field === 'name') {
+              setName(formattedText);
+              // AUTO MOVE TO PHONE after a successful name capture
+              setTimeout(() => startVoiceInput('phone'), 1500);
+            }
+            else if (field === 'phone') {
+              setPhone(formattedText);
+              // AUTO SUBMIT after a successful phone capture
+              setTimeout(() => handleGetStarted(formattedText), 1500);
+            }
           } catch (e) {
             // Fallback
-            if (field === 'name') setName(text);
-            else if (field === 'phone') setPhone(text);
-            else if (field === 'email') setEmail(text);
+            if (field === 'name') {
+              setName(text);
+              setTimeout(() => startVoiceInput('phone'), 1500);
+            }
+            else if (field === 'phone') {
+              setPhone(text);
+              setTimeout(() => handleGetStarted(text), 1500);
+            }
           }
           setVoiceStatus('');
         }
@@ -243,7 +282,11 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
         console.warn('[VoiceInput] Error:', err);
         setVoiceStatus(''); setIsListening(false); setActiveField(null);
       },
-      () => { setIsListening(false); setActiveField(null); setVoiceStatus(''); },
+      () => { 
+        setIsListening(false); 
+        setActiveField(null); 
+        setVoiceStatus(''); 
+      },
       () => { setVoiceStatus('...'); }
     );
 
@@ -255,18 +298,26 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
     }
   };
 
-  const handleGetStarted = async () => {
+  const handleGetStarted = async (finalPhone?: string) => {
     setError('');
-    if (!name.trim()) { setError(t.enterName); return; }
-    if (!phone.trim()) { setError(t.enterPhone); return; }
-    if (!email.trim()) { setError(t.enterEmail); return; }
-    if (!isValidEmail(email)) { setError(t.invalidEmail); return; }
+    const currentName = nameRef.current;
+    const currentPhone = finalPhone || phoneRef.current;
+    
+    if (!currentName.trim()) { 
+      setError(t.enterName); 
+      return; 
+    }
+    if (!currentPhone.trim()) { 
+      setError(t.enterPhone); 
+      return; 
+    }
 
     setLoading(true);
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-      localStorage.setItem(`profile_name_${normalizedEmail}`, name);
-      localStorage.setItem(`profile_phone_${normalizedEmail}`, phone);
+      // Use phone number based identifier since email is removed
+      const normalizedEmail = `${currentPhone.trim().replace(/\D/g, '')}@vaani.ai`;
+      localStorage.setItem(`profile_name_${normalizedEmail}`, currentName);
+      localStorage.setItem(`profile_phone_${normalizedEmail}`, currentPhone);
       await new Promise((resolve) => setTimeout(resolve, 300));
       onAuthSuccess(normalizedEmail);
     } catch (err) {
@@ -275,6 +326,8 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
       setLoading(false);
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
@@ -294,28 +347,12 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
             </div>
           )}
 
-          {/* Listen / Stop instructions button */}
-          <div className="mt-4">
-            <button
-              onClick={handleListenInstructions}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${isSpeaking
-                ? 'bg-cyan-500/20 border border-cyan-500 text-cyan-400 animate-pulse'
-                : 'bg-neutral-800 border border-neutral-700 text-neutral-400 hover:border-cyan-500/50 hover:text-cyan-400'
-                }`}
-            >
-              {isSpeaking ? (
-                <><VolumeX size={13} />{stopLabel[langCode] || 'Stop'}</>
-              ) : (
-                <><Volume2 size={13} />{listenLabel[langCode] || 'Listen'}</>
-              )}
-            </button>
-          </div>
-
           {/* Voice status text */}
           {voiceStatus && (
-            <p className="mt-2 text-xs text-cyan-400 font-bold animate-pulse">{voiceStatus}</p>
+            <p className="mt-4 text-xs text-cyan-400 font-bold animate-pulse">{voiceStatus}</p>
           )}
         </div>
+
 
         <Card className="p-10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-neutral-800 rounded-[40px] bg-black">
           <div className="space-y-6">
@@ -343,20 +380,9 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
                       : 'border-neutral-800 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10'
                       }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => startVoiceInput('name')}
-                    disabled={loading}
-                    title={activeField === 'name' && isListening ? 'Stop listening' : 'Speak your name'}
-                    className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all border ${activeField === 'name' && isListening
-                      ? 'bg-red-500 border-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
-                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/50'
-                      }`}
-                  >
-                    {activeField === 'name' && isListening ? <MicOff size={16} /> : <Mic size={16} />}
-                  </button>
                 </div>
               </div>
+
 
               {/* Phone field */}
               <div className="space-y-2">
@@ -376,51 +402,6 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
                       : 'border-neutral-800 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10'
                       }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => startVoiceInput('phone')}
-                    disabled={loading}
-                    title={activeField === 'phone' && isListening ? 'Stop listening' : 'Speak your phone number'}
-                    className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all border ${activeField === 'phone' && isListening
-                      ? 'bg-red-500 border-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
-                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/50'
-                      }`}
-                  >
-                    {activeField === 'phone' && isListening ? <MicOff size={16} /> : <Mic size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Email field */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 px-1">
-                  <Mail size={12} className="text-cyan-400" />
-                  {t.emailLabel}
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder={t.emailPlaceholder}
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                    disabled={loading}
-                    className={`bg-neutral-900 h-12 text-white border-2 rounded-2xl transition-all placeholder:text-neutral-500 ${activeField === 'email'
-                      ? 'border-cyan-500 ring-4 ring-cyan-500/20'
-                      : 'border-neutral-800 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10'
-                      }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => startVoiceInput('email')}
-                    disabled={loading}
-                    title={activeField === 'email' && isListening ? 'Stop listening' : 'Speak your email'}
-                    className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all border ${activeField === 'email' && isListening
-                      ? 'bg-red-500 border-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
-                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/50'
-                      }`}
-                  >
-                    {activeField === 'email' && isListening ? <MicOff size={16} /> : <Mic size={16} />}
-                  </button>
                 </div>
               </div>
             </div>
@@ -431,8 +412,9 @@ export function EmailAuth({ onAuthSuccess, language }: EmailAuthProps) {
               </div>
             )}
 
+
             <Button
-              onClick={handleGetStarted}
+              onClick={() => handleGetStarted()}
               disabled={loading}
               className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:opacity-95 h-14 rounded-2xl text-lg font-black shadow-xl transition-all active:scale-95"
             >

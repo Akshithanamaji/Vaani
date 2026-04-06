@@ -6,7 +6,7 @@ import { ServiceSelector } from '@/components/service-selector';
 import { VoiceForm } from '@/components/voice-form';
 import { QRDisplay } from '@/components/qr-display';
 import { AdminDashboard } from '@/components/admin-dashboard';
-import { UserProfileDropdown } from '@/components/user-profile-dropdown';
+import { UserSidebar } from '@/components/user-sidebar';
 import { LocationSelector } from '@/components/location-selector';
 import { Menu, X, LogOut, User } from 'lucide-react';
 import { useLanguage, AVAILABLE_LANGUAGES } from '@/contexts/LanguageContext';
@@ -60,8 +60,8 @@ export function MainPortal({ userEmail, onLogout, onGoToProfile, language, onLan
   };
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Navigation */}
+    <div className="min-h-screen bg-black flex flex-col">
+      {/* Navigation - Full Width */}
       <nav className="bg-black/80 backdrop-blur-md sticky top-0 z-50 border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
@@ -70,19 +70,6 @@ export function MainPortal({ userEmail, onLogout, onGoToProfile, language, onLan
               <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                 Vaani Ai
               </span>
-            </div>
-
-            {/* Desktop Menu - Profile Dropdown with Language Selector */}
-            <div className="hidden md:flex items-center gap-6">
-              <UserProfileDropdown
-                userEmail={userEmail}
-                onLogout={onLogout}
-                onGoToProfile={onGoToProfile}
-                onViewForm={(sub) => {
-                  setSubmittedData(sub);
-                  setCurrentView('qr-display');
-                }}
-              />
             </div>
 
             {/* Mobile Menu Toggle */}
@@ -102,7 +89,7 @@ export function MainPortal({ userEmail, onLogout, onGoToProfile, language, onLan
           {mobileMenuOpen && (
             <div className="border-t border-slate-100 mt-6 pt-6 md:hidden space-y-6 animate-in slide-in-from-top-4 duration-500">
               <div className="px-2">
-                <UserProfileDropdown
+                <UserSidebar
                   userEmail={userEmail}
                   onLogout={onLogout}
                   onGoToProfile={onGoToProfile}
@@ -119,50 +106,72 @@ export function MainPortal({ userEmail, onLogout, onGoToProfile, language, onLan
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {currentView === 'home' && (
-          <ServiceSelector
-            onSelectService={handleServiceSelect}
-            language={selectedLanguage?.voiceCode || 'en-IN'}
+      {/* Content Area */}
+      <div className="flex-1 flex w-full relative">
+        {/* Desktop Sidebar - Sticky under the 113px tall navbar */}
+        <div className="hidden md:block shrink-0 sticky top-[113px] h-[calc(100vh-113px)] self-start border-white/10 relative z-40 bg-black transition-all duration-300 ease-in-out border-r overflow-y-auto no-scrollbar">
+          <UserSidebar
+            userEmail={userEmail}
+            onLogout={onLogout}
+            onGoToProfile={onGoToProfile}
+            onViewForm={(sub) => {
+              setSubmittedData(sub);
+              setCurrentView('qr-display');
+            }}
+            language={language}
           />
-        )}
+        </div>
 
-        {currentView === 'location-select' && selectedService && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <LocationSelector
-              serviceName={getTranslatedService(selectedService, selectedLanguage?.code || 'en').name}
-              onLocationSelected={handleLocationSelected}
-              onCancel={handleBackToHome}
-            />
-          </div>
-        )}
+        {/* Main Content Area - This grows and scrolls freely with the page */}
+        <div className="flex-1 w-full">
 
-        {currentView === 'form' && selectedService && selectedLocation && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <VoiceForm
-              service={selectedService}
-              language={selectedLanguage?.voiceCode || 'en-IN'}
-              selectedLocation={selectedLocation}
-              userEmail={userEmail}
-              onSubmit={handleFormSubmit}
-              onBack={handleBackToLocationSelect}
-            />
-          </div>
-        )}
 
-        {currentView === 'qr-display' && submittedData && (
-          <div className="animate-in zoom-in-95 duration-500">
-            <QRDisplay
-              submission={submittedData}
-              language={selectedLanguage?.voiceCode || 'en-IN'}
-              onNewApplication={handleBackToHome}
-            />
-          </div>
-        )}
+          {/* Main Content */}
+          <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            {currentView === 'home' && (
+              <ServiceSelector
+                onSelectService={handleServiceSelect}
+                language={selectedLanguage?.voiceCode || 'en-IN'}
+              />
+            )}
 
-        {currentView === 'admin' && <AdminDashboard />}
-      </main>
+            {currentView === 'location-select' && selectedService && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <LocationSelector
+                  serviceName={getTranslatedService(selectedService, selectedLanguage?.code || 'en').name}
+                  onLocationSelected={handleLocationSelected}
+                  onCancel={handleBackToHome}
+                />
+              </div>
+            )}
+
+            {currentView === 'form' && selectedService && selectedLocation && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <VoiceForm
+                  service={selectedService}
+                  language={selectedLanguage?.voiceCode || 'en-IN'}
+                  selectedLocation={selectedLocation}
+                  userEmail={userEmail}
+                  onSubmit={handleFormSubmit}
+                  onBack={handleBackToLocationSelect}
+                />
+              </div>
+            )}
+
+            {currentView === 'qr-display' && submittedData && (
+              <div className="animate-in zoom-in-95 duration-500">
+                <QRDisplay
+                  submission={submittedData}
+                  language={selectedLanguage?.voiceCode || 'en-IN'}
+                  onNewApplication={handleBackToHome}
+                />
+              </div>
+            )}
+
+            {currentView === 'admin' && <AdminDashboard />}
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

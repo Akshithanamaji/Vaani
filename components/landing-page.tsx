@@ -710,6 +710,42 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
   // true only after the user physically clicks something — prevents autoplay-policy errors
   // that occur when selectedLanguage is restored from localStorage before any interaction.
   const userHasInteracted = useRef(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
+
+  // AUTO-SCROLL LOGIC: Once language is selected, scroll down then auto-enter sign-in
+  useEffect(() => {
+    if (selectedLanguage && !hasScrolled) {
+      setHasScrolled(true);
+      
+      // Give time for text-to-speech confirmation message ("You have selected...")
+      setTimeout(() => {
+        const totalHeight = document.body.scrollHeight;
+        const duration = 10000; // 10 seconds for a very slow, readable scroll
+        const startTime = performance.now();
+        const startPos = window.scrollY;
+
+        const animateScroll = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          // Linear scroll for constant readable speed
+          window.scrollTo(0, startPos + (totalHeight * progress));
+
+          if (progress < 1) {
+            requestAnimationFrame(animateScroll);
+          } else {
+            // Once finished, wait a few more seconds at the bottom then move to sign-in
+            setTimeout(() => {
+              onGetStarted();
+            }, 3000); // 3-second pause at the bottom
+          }
+        };
+
+        requestAnimationFrame(animateScroll);
+      }, 3500); // Start scroll 3.5s after language selection
+    }
+  }, [selectedLanguage, hasScrolled, onGetStarted]);
+
 
   // A ref to hold a cancel function for the currently active audio loop.
   // Calling it will immediately stop playback and prevent the next step from firing.
