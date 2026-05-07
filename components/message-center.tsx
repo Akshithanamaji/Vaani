@@ -95,9 +95,9 @@ export const MessageCenter = ({
     };
 
     return (
-        <Card className="flex flex-col h-[600px] max-h-[85vh] w-full max-w-lg bg-black shadow-2xl rounded-3xl overflow-hidden border border-neutral-800 animate-in zoom-in-95 duration-300">
+        <Card className="flex flex-col h-[600px] max-h-[85vh] w-full max-w-lg bg-black shadow-2xl rounded-3xl overflow-hidden border border-neutral-800 animate-in zoom-in-95 duration-300 p-0 gap-0">
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 text-white flex justify-between items-center shadow-lg">
+            <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 text-white flex justify-between items-center shadow-lg shrink-0">
                 <div className="flex items-center gap-4">
                     <Button onClick={onClose} variant="ghost" className="text-white hover:bg-white/10 h-10 w-10 p-0 rounded-full">
                         <ArrowLeft className="w-5 h-5" />
@@ -120,7 +120,7 @@ export const MessageCenter = ({
             {/* Messages Area */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-6 space-y-6 bg-neutral-900 custom-scrollbar"
+                className="flex-grow overflow-y-auto p-6 space-y-6 bg-neutral-900 custom-scrollbar min-h-0"
             >
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
@@ -137,30 +137,32 @@ export const MessageCenter = ({
                         </p>
                     </div>
                 ) : (
-                    messages.map((msg) => (
-                        <div key={msg.id} className={`flex flex-col ${msg.sender === senderRole ? 'items-end' : 'items-start'}`}>
-                            <div className={`max-w-[80%] p-4 rounded-3xl text-sm shadow-sm transition-all ${msg.sender === senderRole
-                                ? 'bg-gradient-to-r from-cyan-600 to-purple-600 text-white rounded-br-none'
-                                : 'bg-neutral-800 text-white border border-neutral-700 rounded-bl-none'
-                                }`}>
-                                {msg.content}
+                    <div className="flex flex-col gap-6">
+                        {messages.map((msg) => (
+                            <div key={msg.id} className={`flex flex-col ${msg.sender === senderRole ? 'items-end' : 'items-start'}`}>
+                                <div className={`max-w-[80%] p-4 rounded-3xl text-sm shadow-sm transition-all ${msg.sender === senderRole
+                                    ? 'bg-gradient-to-r from-cyan-600 to-purple-600 text-white rounded-br-none'
+                                    : 'bg-neutral-800 text-white border border-neutral-700 rounded-bl-none'
+                                    }`}>
+                                    {msg.content}
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 px-1">
+                                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">
+                                        {msg.sender === 'user' ? 'You' : `${serviceName} Admin`}
+                                    </span>
+                                    <span className="text-[10px] font-black text-neutral-600 uppercase">•</span>
+                                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 mt-2 px-1">
-                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">
-                                    {msg.sender === 'user' ? 'You' : `${serviceName} Admin`}
-                                </span>
-                                <span className="text-[10px] font-black text-neutral-600 uppercase">•</span>
-                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">
-                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </div>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleSendMessage} className="p-5 bg-black border-t border-neutral-800 flex gap-3 items-center">
+            <form onSubmit={handleSendMessage} className="p-5 bg-black border-t border-neutral-800 flex gap-3 items-center shrink-0 mt-auto">
                 <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}

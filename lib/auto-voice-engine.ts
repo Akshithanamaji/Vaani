@@ -1,106 +1,24 @@
 /**
- * AutoVoiceEngine  — simple, reliable voice pipeline.
- *
- * Default flow (skipConfirm = true, used in forms):
- *   1. speak(prompt)       → TTS asks the question
- *   2. startListening()    → mic opens after TTS ends (1000ms gap)
- *   3. interim updates     → live text shown in field as user speaks
- *   4. onConfirmed(value)  → fires immediately on final speech result
- *
- * Legacy flow (skipConfirm = false):
- *   Same as above but adds: TTS "I heard X?" → user says YES/NO
+ * AutoVoiceEngine — Hybrid Google-grade accuracy voice pipeline.
+ * 
+ * Performance:
+ * 1. Uses native Web Speech API for real-time interim feedback (low-latency).
+ * 2. Uses Groq Whisper Large-v3 for final transcription (high-accuracy).
+ * 3. Dynamic language detection: Can handle mixed language speech (e.g. Hindi + English).
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { speakText, stopSpeaking } from './voice-utils';
+import { speakText, stopSpeaking, transcribeWithGroqWhisper } from './voice-utils';
 
-// ── YES / NO keyword sets ─────────────────────────────────────────────────────
-const YES_WORDS = new Set([
-  'yes', 'yeah', 'yep', 'correct', 'right', 'ok', 'okay', 'confirm', 'sure',
-  'fine', 'good', 'great', 'proceed', 'next', 'continue', 'done',
-  'हाँ', 'हां', 'ठीक', 'सही', 'बिल्कुल', 'ओके', 'आगे',
-  'అవును', 'సరి', 'సరే', 'ఓకే',
-  'ಹೌದು', 'ಸರಿ', 'ಓಕೆ',
-  'ஆம்', 'சரி', 'ஓகே',
-  'അതെ', 'ശരി', 'ഓകെ',
-  'हो', 'होय', 'बरोबर', 'ठीक आहे',
-  'হ্যাঁ', 'হ্যা', 'ঠিক', 'ওকে',
-  'હા', 'સાચું', 'ઠীक', 'ઓકে',
-  'ହଁ', 'ଠिक', 'ଓକେ',
-  'ਹਾਂ', 'ਠੀਕ', 'ਓਕੇ',
-  'ہاں', 'جی', 'ٹھیک', 'اوکے',
-]);
+// Keywords for confirmation
+const YES_WORDS = new Set(['yes', 'yeah', 'yep', 'correct', 'right', 'ok', 'okay', 'confirm', 'sure', 'fine', 'good', 'great', 'proceed', 'next', 'continue', 'done', 'हाँ', 'हां', 'ठीक', 'सही', 'బిల్కుల్', 'ఓకే', 'అవును', 'సరి', 'సరే', 'ఓకే', 'ಹೌದು', 'ಸರಿ', 'ಓಕೆ', 'ஆம்', 'சரி', 'ஓகே', 'അതെ', 'ശരി', 'ഓകെ', 'हो', 'होय', 'बरोबर', 'ठीक आहे', 'হ্যাঁ', 'হ্যা', 'ঠিক', 'ওকে', 'હા', 'સાચું', 'ઠીક', 'ઓકે', 'ହଁ', 'ଠିକ୍', 'ଓକେ', 'ਹਾਂ', 'ਠੀਕ', 'ਓਕੇ', 'ہاں', 'جی', 'ٹھیک', 'اوکے']);
+const NO_WORDS = new Set(['no', 'nope', 'wrong', 'incorrect', 'retry', 'again', 'redo', 'back', 'cancel', 'नहीं', 'नही', 'गलत', 'फिर से', 'दोबारा', 'కాదు', 'లేదు', 'తప్పు', 'మళ్ళీ', 'ಇಲ್ಲ', 'ಇಲ್ಲಾ', 'ತಪ್ಪು', 'ಮತ್ತೆ', 'ಇல்லை', 'தவறு', 'மீண்டும்', 'ഇല്ല', 'തെറ്റ്', 'വീണ്ടും', 'नाही', 'चुकीचे', 'पुन्हा', 'না', 'না না', 'ভুল', 'আবার', 'ના', 'ખોટું', 'ફરી', 'ନା', 'ଭୁଲ', 'ପୁନଃ', 'ਨਹੀਂ', 'ਗਲਤ', 'ਮੁੜ', 'نہیں', 'غلط', 'دوبارہ']);
 
-const NO_WORDS = new Set([
-  'no', 'nope', 'wrong', 'incorrect', 'retry', 'again', 'redo', 'back', 'cancel',
-  'नहीं', 'नही', 'गलत', 'फिर से', 'दोबारा',
-  'కాదు', 'లేదు', 'తప్పు', 'మళ్ళీ',
-  'ಇಲ್ಲ', 'ಇಲ್ಲಾ', 'ತಪ್ಪು', 'ಮತ್ತೆ',
-  'இல்லை', 'தவறு', 'மீண்டும்',
-  'ഇല്ല', 'തെറ്റ്', 'വீണ്ടും',
-  'नाही', 'चुकीचे', 'पुन्हा',
-  'না', 'না না', 'ভুল', 'আবার',
-  'ના', 'ખोटું', 'ફрी',
-  'ନା', 'ଭୁଲ', 'ପুনঃ',
-  'ਨਹੀਂ', 'ਗਲਤ', 'ਮੁੜ',
-  'نہیں', 'غلط', 'دوبارہ',
-]);
-
-/** Confirmation prompts in all 12 languages */
-export const CONFIRM_PROMPTS: Record<string, string> = {
-  en: 'I heard "{VALUE}". Is that correct? Say Yes or No.',
-  hi: 'मैंने "{VALUE}" सुना। क्या यह सही है? हाँ या नहीं बोलें।',
-  te: 'నేను "{VALUE}" విన్నాను. అది సరైనదా? అవును లేదా కాదు అని చెప్పండి.',
-  kn: 'ನಾನು "{VALUE}" ಕೇಳಿದೆ. ಅದು ಸರಿಯೇ? ಹೌದು ಅಥವಾ ಇಲ್ಲ ಎಂದು ಹೇಳಿ.',
-  ta: 'நான் "{VALUE}" கேட்டேன். அது சரியா? ஆம் அல்லது இல்லை என்று சொல்லுங்கள்.',
-  ml: 'ഞാൻ "{VALUE}" കേട്ടു. അത് ശരിയാണോ? അതെ അല്ലെങ്കിൽ ഇല്ല എന്ന് മറുപടി പറയൂ.',
-  mr: 'मी "{VALUE}" ऐकले. ते बरोबर आहे का? हो किंवा नाही सांगा.',
-  bn: 'আমি "{VALUE}" শুনলাম। এটা কি ঠিক? হ্যাঁ বা না বলুন।',
-  gu: 'મE "{VALUE}" સાांभળ्युं. ते सही है? हा या ना कहो.',
-  or: 'I heard "{VALUE}". Is that correct? Say Yes or No.',
-  pa: 'ਮੈਂ "{VALUE}" ਸੁਣਿਆ। ਕੀ ਇਹ ਸਹੀ ਹੈ? ਹਾਂ ਜਾਂ ਨਹੀਂ ਕਹੋ।',
-  ur: 'میں نے "{VALUE}" سنا۔ کیا یہ درست ہے؟ ہاں یا نہیں کہیں۔',
-};
-
-/** Generic "please say again" retry prompts */
-export const RETRY_PROMPTS: Record<string, string> = {
-  en: 'Sorry, please say that again.',
-  hi: 'माफ़ करें, फिर से बोलें।',
-  te: 'క్షమించండి, దయచేసి మళ్ళీ చెప్పండి.',
-  kn: 'ಕ್ಷಮಿಸಿ, ದಯಾಮಾಡಿ ಮತ್ತೆ ಹೇಳಿ.',
-  ta: 'மன்னிக்கவும், மீண்டும் சொல்லுங்கள்.',
-  ml: 'ക്ഷമിക്കണം, ദയവായി വീണ്ടും പറयൂ.',
-  mr: 'माफ करा, कृपया पुन्हा सांगा.',
-  bn: 'দুঃখিত, আবার বলুন।',
-  gu: 'माफ करो, फिर कहो.',
-  or: 'Sorry, please say that again.',
-  pa: 'ਮਾਫ਼ ਕਰਨਾ, ਦੁਬਾਰਾ ਕਹੋ।',
-  ur: 'معاف کریں، دوبارہ کہیں۔',
-};
-
-/** "Listening…" indicator labels in 12 languages */
 export const LISTENING_LABELS: Record<string, string> = {
-  en: '🎤 Listening…',
-  hi: '🎤 सुन रहा हूँ…',
-  te: '🎤 వింటున్నాను…',
-  kn: '🎤 ಕೇಳುತ್ತಿದ್ದೇನೆ…',
-  ta: '🎤 கேட்கிறேன்…',
-  ml: '🎤 കേൾക്കുന്നു…',
-  mr: '🎤 ऐकत आहे…',
-  bn: '🎤 শুনছি…',
-  gu: '🎤 સাংભળু छु…',
-  or: '🎤 Listening…',
-  pa: '🎤 ਸੁਣ ਰਿਹਾ ਹਾਂ…',
-  ur: '🎤 سن رہا ہوں…',
+  en: '🎤 Listening…', hi: '🎤 सुन रहा हूँ…', te: '🎤 వింటున్నాను…', kn: '🎤 ಕೇಳುತ್ತಿದ್ದೇನೆ…', ta: '🎤 கேட்கிறேன்…', ml: '🎤 കേൾക്കുന്നു…', mr: '🎤 ऐकत आहे…', bn: '🎤 শুনছি…', gu: '🎤 સાંભળી રહ્યો છું…', or: '🎤 Listening…', pa: '🎤 ਸੁਣ ਰਿਹਾ ਹਾਂ…', ur: '🎤 سن رہا ہوں…',
 };
 
-export type AutoVoicePhase =
-  | 'idle'
-  | 'speaking'
-  | 'listening'
-  | 'confirming'
-  | 'confirm_listen'
-  | 'processing';
+export type AutoVoicePhase = 'idle' | 'speaking' | 'listening' | 'confirming' | 'confirm_listen' | 'processing';
 
 export interface AutoVoiceState {
   phase: AutoVoicePhase;
@@ -114,13 +32,9 @@ export interface UseAutoVoiceOptions {
   onConfirmed: (value: string) => void;
   onRetry?: () => void;
   onError?: (err: string) => void;
-  /** ms gap after TTS ends before mic opens (default 1000) */
   micDelay?: number;
-  /**
-   * true (default) = skip YES/NO confirmation, save immediately.
-   * false = legacy speak→confirm→yes/no cycle.
-   */
   skipConfirm?: boolean;
+  fieldName?: string; 
 }
 
 export function useAutoVoice({
@@ -130,16 +44,17 @@ export function useAutoVoice({
   onError,
   micDelay = 1000,
   skipConfirm = true,
+  fieldName = "",
 }: UseAutoVoiceOptions) {
   const [state, setState] = useState<AutoVoiceState>({
-    phase: 'idle',
-    transcript: '',
-    interim: '',
-    pendingValue: '',
+    phase: 'idle', transcript: '', interim: '', pendingValue: ''
   });
 
   const recognitionRef = useRef<any>(null);
-  const cancelledRef   = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const cancelledRef = useRef(false);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const langCode = (language || 'en').split('-')[0];
 
   const setPhase = useCallback((phase: AutoVoicePhase) =>
@@ -149,6 +64,12 @@ export function useAutoVoice({
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch { /* ignore */ }
       recognitionRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try { mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+    }
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
     }
   }, []);
 
@@ -161,148 +82,91 @@ export function useAutoVoice({
 
   useEffect(() => () => { stopAll(); }, [stopAll]);
 
-  /* ── open mic and collect one utterance ───────────────────────── */
   const openMic = useCallback((onResult: (text: string) => void) => {
-    const SpeechRec =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRec) {
-      console.warn('[AutoVoice] SpeechRecognition not supported in this browser');
       if (onError) onError('not-supported');
       return;
     }
 
     stopMic();
+    audioChunksRef.current = [];
 
-    const rec: any = new SpeechRec();
-    rec.lang            = language.includes('-') ? language : `${language}-IN`;
-    // Setting continuous to false allows the browser's built-in utterance detection to stop and finalize faster
-    rec.continuous      = false;
-    rec.interimResults  = true;
-    rec.maxAlternatives = 3;         // consider more alternatives for better accuracy
-    recognitionRef.current = rec;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const preferredTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4'];
+      const supportedMime = preferredTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
+      const recorder = supportedMime ? new MediaRecorder(stream, { mimeType: supportedMime }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
 
-    let finalReceived = false;
-    let silenceTimer: NodeJS.Timeout | null = null;
-    
-    // Helper to commit the result
-    const commitResult = (text: string) => {
-      if (!text.trim() || finalReceived) return;
-      finalReceived = true;
-      if (silenceTimer) clearTimeout(silenceTimer);
-      try { rec.stop(); } catch { /* ignore */ }
-      recognitionRef.current = null;
-      const cleaned = text.trim();
-      setState(s => ({ ...s, interim: '', transcript: cleaned }));
-      onResult(cleaned);
-    };
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        if (cancelledRef.current) return;
 
-    rec.onresult = (ev: any) => {
-      let interimText = '';
-      let finalText   = '';
-
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const result = ev.results[i];
-
-        // Pick highest-confidence alternative
-        let bestText = result[0].transcript;
-        let bestConf = result[0].confidence || 0;
-        for (let j = 1; j < result.length; j++) {
-          if ((result[j].confidence || 0) > bestConf) {
-            bestConf = result[j].confidence || 0;
-            bestText = result[j].transcript;
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        
+        setPhase('processing');
+        
+        // Pass 'auto' for language if the user wants "any language" detection (Google-style)
+        // Or pass current langCode as a hint. We'll use 'auto' for best multi-lingual results.
+        const transcription = await transcribeWithGroqWhisper(blob, 'auto', fieldName);
+        
+        if (!cancelledRef.current) {
+          if (transcription.success && transcription.text.trim()) {
+            setState(s => ({ ...s, transcript: transcription.text, interim: '' }));
+            onResult(transcription.text);
+          } else {
+            if (onRetry) onRetry();
           }
         }
+      };
 
-        if (result.isFinal) {
-          finalText += bestText;
-        } else {
-          interimText += bestText;
+      recorder.start();
+
+      const rec: any = new SpeechRec();
+      rec.lang = language.includes('-') ? language : `${language}-IN`;
+      rec.continuous = true; // Stay open until we manually stop it
+      rec.interimResults = true;
+      recognitionRef.current = rec;
+
+      const resetSilenceTimer = () => {
+         if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+         // Increased silence window to 2.5 seconds to prevent cutting off names/long inputs
+         silenceTimeoutRef.current = setTimeout(() => {
+            if (mediaRecorderRef.current?.state === 'recording') {
+               mediaRecorderRef.current.stop();
+            }
+            try { rec.stop(); } catch {}
+         }, 2500);
+      };
+
+      rec.onresult = (ev: any) => {
+        let interimText = '';
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          interimText += ev.results[i][0].transcript;
         }
-      }
+        setState(s => ({ ...s, interim: interimText }));
+        resetSilenceTimer();
+      };
 
-      // Show live interim text in UI immediately
-      const currentText = finalText || interimText;
-      setState(s => ({ ...s, interim: currentText }));
+      rec.onerror = (ev: any) => {
+        if (ev.error === 'no-speech') {
+            if (mediaRecorderRef.current?.state === 'recording') recorder.stop();
+        }
+      };
 
-      if (silenceTimer) clearTimeout(silenceTimer);
+      rec.onstart = () => resetSilenceTimer();
 
-      if (finalText.trim() && !finalReceived) {
-        commitResult(finalText);
-      } else if (interimText.trim() && !finalReceived) {
-        // Auto-commit interim after 2 seconds of silence
-        silenceTimer = setTimeout(() => {
-          commitResult(interimText);
-        }, 2000);
-      }
-    };
+      try { rec.start(); } catch { /* ignore */ }
 
-    rec.onerror = (ev: any) => {
-      const err = ev?.error || '';
-      console.warn('[AutoVoice] SpeechRecognition error:', err);
-      
-      if (err === 'not-allowed' || err === 'audio-capture') {
-        // Fatal error, microphone blocked or missing
-        try { rec.stop(); } catch {}
-        cancelledRef.current = true;
-        setPhase('idle');
-        if (onError) onError(err);
-        return;
-      }
-      
-      if (!cancelledRef.current && err !== 'aborted') {
-        // On no-speech or network error, let onend handle the restart to avoid InvalidStateError
-        try { rec.stop(); } catch {}
-      }
-    };
-
-    rec.onend = () => {
-      if (!finalReceived && recognitionRef.current === rec && !cancelledRef.current) {
-        // Small delay to allow browser audio pipeline to reset
-        setTimeout(() => {
-           if (!finalReceived && recognitionRef.current === rec && !cancelledRef.current) {
-             try { rec.start(); } catch { /* give up */ }
-           }
-        }, 200);
-      }
-    };
-
-    try { rec.start(); } catch { /* ignore InvalidStateError */ }
-  }, [language, stopMic, setPhase, onError]);
-
-  /* ── legacy: listen for YES/NO confirmation ───────────────────── */
-  const listenForConfirmation = useCallback((pendingValue: string) => {
-    if (cancelledRef.current) return;
-    setPhase('confirm_listen');
-    openMic((answer) => {
-      const lower = answer.toLowerCase().trim();
-      const isYes = [...YES_WORDS].some(w => lower.includes(w));
-      const isNo  = [...NO_WORDS].some(w  => lower.includes(w));
-      if (isYes) {
-        setPhase('processing');
-        onConfirmed(pendingValue);
-      } else if (isNo) {
-        setPhase('idle');
-        onRetry?.();
-      } else {
-        listenForConfirmation(pendingValue);
-      }
+    }).catch(err => {
+      if (onError) onError('mic-access');
     });
-  }, [openMic, onConfirmed, onRetry, setPhase]);
 
-  /* ── legacy: speak confirm prompt ────────────────────────────── */
-  const speakAndConfirm = useCallback(async (value: string) => {
-    if (cancelledRef.current) return;
-    const prompt = (CONFIRM_PROMPTS[langCode] || CONFIRM_PROMPTS['en']).replace('{VALUE}', value);
-    setState(s => ({ ...s, phase: 'confirming', pendingValue: value }));
-    await speakText(prompt, language);
-    if (cancelledRef.current) return;
-    await new Promise(r => setTimeout(r, micDelay));
-    listenForConfirmation(value);
-  }, [langCode, language, micDelay, listenForConfirmation]);
+  }, [language, stopMic, setPhase, onError, fieldName, onRetry]);
 
-  /* ── main: speak question then listen for answer ─────────────── */
   const askQuestion = useCallback(async (prompt: string) => {
     cancelledRef.current = false;
     stopMic();
@@ -312,29 +176,13 @@ export function useAutoVoice({
     await speakText(prompt, language);
 
     if (cancelledRef.current) return;
-
-    // Wait for audio to fully clear before opening mic (avoids TTS bleed-in)
     await new Promise(r => setTimeout(r, micDelay));
     if (cancelledRef.current) return;
 
     setPhase('listening');
+    openMic(onConfirmed);
+  }, [language, micDelay, openMic, stopMic, onConfirmed]);
 
-    openMic(async (answer) => {
-      if (cancelledRef.current) return;
-      setState(s => ({ ...s, transcript: answer }));
-
-      if (skipConfirm) {
-        // Direct: save immediately, no confirmation round-trip
-        setPhase('processing');
-        onConfirmed(answer);
-      } else {
-        // Legacy: ask "is that correct?"
-        await speakAndConfirm(answer);
-      }
-    });
-  }, [language, micDelay, openMic, speakAndConfirm, stopMic, setPhase, skipConfirm, onConfirmed]);
-
-  /* ── speak only, no listening ────────────────────────────────── */
   const announce = useCallback(async (text: string) => {
     cancelledRef.current = false;
     stopMic();

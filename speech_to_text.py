@@ -24,14 +24,14 @@ class GroqSpeechToText:
         
         # Context prompts for better accuracy based on field types
         self.whisper_prompts = {
-            'name': 'This is a person full name spoken in India. It may be an Indian name like Ramesh Kumar, Priya Sharma, Mohammed Ali, or a South Indian name.',
-            'full_name': 'This is a person full name spoken in India. It may be an Indian name like Ramesh Kumar, Priya Sharma, Mohammed Ali, or a South Indian name.',
-            'father_name': 'This is the name of a father, spoken in India. Common Indian names.',
-            'mother_name': 'This is the name of a mother, spoken in India. Common Indian names.',
+            'name': 'This is a person full name spoken in India. Common examples include Akshitha, Akshithanamaji, Ramesh Kumar, Priya Sharma, Mohammed Ali, or South Indian names ending in -tha like Anvitha, Harshitha.',
+            'full_name': 'This is a person full name spoken in India. Examples: Akshitha, Akshithanamaji, Ramesh Kumar, Priya Sharma. South Indian names often use "th" for the dental sound (e.g., Akshitha instead of Akshita).',
+            'father_name': 'This is the name of a father, spoken in India. Common Indian names like Anand, Venkatesh, Rajesh.',
+            'mother_name': 'This is the name of a mother, spoken in India. Common Indian names like Lakshmi, Sunita, Akshitha.',
             'husband_name': 'This is a spouse name spoken in India.',
             'guardian_name': 'This is a guardian name spoken in India.',
             'owner_name': 'This is an owner name spoken in India.',
-            'applicant_name': 'This is an applicant full name spoken in India.',
+            'applicant_name': 'This is an applicant full name spoken in India. Precise spelling expected for names like Akshitha.',
             'phone': 'This is a 10-digit Indian mobile phone number. The speaker may say the digits individually or in groups.',
             'mobile': 'This is a 10-digit Indian mobile phone number. The speaker may say the digits individually or in groups.',
             'mobile_no': 'This is a 10-digit Indian mobile phone number.',
@@ -40,8 +40,8 @@ class GroqSpeechToText:
             'pan': 'This is a PAN card number with 5 letters, 4 digits, and 1 letter. For example ABCDE1234F.',
             'pincode': 'This is a 6-digit Indian postal PIN code.',
             'email': 'This is an email address. The speaker may say dot for . and at for @.',
-            'dob': 'This is a date of birth. The speaker may say day month year in any order.',
-            'date_of_birth': 'This is a date of birth spoken in India.',
+            'dob': 'This is a date of birth. The speaker will likely say the Date, then Month, then Year (e.g., "15th August 1990" or "01 01 1980"). Precise number detection is critical.',
+            'date_of_birth': 'This is a date of birth spoken in India. The speaker will likely say the Date, then Month, then Year.',
             'address': 'This is a residential address in India.',
             'village': 'This is a village, town, or city name in India.',
             'district': 'This is an Indian district or city name.',
@@ -115,10 +115,12 @@ class GroqSpeechToText:
             
             data = {
                 'model': 'whisper-large-v3',
-                'language': language,
                 'prompt': whisper_prompt,
-                'temperature': '0'  # Greedy decoding for deterministic results
+                'temperature': '0' if ('phone' in field_name.lower() or 'aadhaar' in field_name.lower() or 'pin' in field_name.lower()) else '0.1' 
             }
+            
+            if language and language.lower() != 'auto':
+                data['language'] = language
             
             headers = {
                 'Authorization': f'Bearer {self.api_key}'

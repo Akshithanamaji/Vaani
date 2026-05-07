@@ -130,6 +130,19 @@ function splitTextIntoChunks(text: string, maxLen: number = 190): string[] {
   return chunks.filter((c) => c.length > 0);
 }
 
+// Global settings for voice output
+let globalVoiceSpeed = "1";
+let globalVoiceVolume = 1.0;
+
+/**
+ * Update global voice settings from context
+ */
+export function setGlobalVoiceSettings(settings: { speed?: string; volume?: number; gender?: string }) {
+  if (settings.speed !== undefined) globalVoiceSpeed = settings.speed;
+  if (settings.volume !== undefined) globalVoiceVolume = settings.volume;
+  console.log(`[Voice] Global settings updated: speed=${globalVoiceSpeed}, volume=${globalVoiceVolume}`);
+}
+
 /**
  * Play a single text chunk via the TTS proxy.
  * Resolves when audio ends, errors, or stop is requested.
@@ -139,7 +152,7 @@ function playChunk(chunk: string, langCode: string): Promise<void> {
     if (ttsStopRequested) { resolve(); return; }
 
     const encodedText = encodeURIComponent(chunk);
-    const proxyUrl = `/api/tts-proxy?text=${encodedText}&lang=${langCode}`;
+    const proxyUrl = `/api/tts-proxy?text=${encodedText}&lang=${langCode}&speed=${globalVoiceSpeed}`;
 
     if (globalAudioInstance) {
       try {
@@ -152,7 +165,12 @@ function playChunk(chunk: string, langCode: string): Promise<void> {
 
     const audio = new Audio(proxyUrl);
     globalAudioInstance = audio;
-    audio.volume = 1.0;
+    audio.volume = globalVoiceVolume;
+    
+    // Support 'fast' speed via client-side playbackRate if speed > 1
+    if (globalVoiceSpeed === '1.5' || globalVoiceSpeed === '2') {
+      audio.playbackRate = parseFloat(globalVoiceSpeed);
+    }
 
     audio.onended = () => resolve();
     audio.onerror = (err) => {
@@ -173,15 +191,9 @@ function playChunk(chunk: string, langCode: string): Promise<void> {
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * SINGLE TTS ENGINE — Google Translate TTS (via /api/tts-proxy)
- * All voice output in the entire app goes through this function so the
- * voice tone is identical everywhere (language selector, voice form,
- * service selector, QR display, email-auth, AI chatbot, location selector).
- *
- * The browser's Web Speech API is intentionally NOT used for TTS output.
+ * FEMALE ENGINE — Google Translate TTS (via /api/tts-proxy)
+ * Google TTS always produces a female voice — this is used when gender=female.
  * ─────────────────────────────────────────────────────────────────────────────
- *
- * For Odia and other unsupported languages, falls back to English.
  */
 async function speakWithGoogleTTS(
   text: string,
@@ -190,6 +202,11 @@ async function speakWithGoogleTTS(
   if (!text || text.trim().length === 0) {
     console.warn("[GoogleTTS] Empty text provided, skipping");
     return;
+  }
+
+  // ── Stop the OTHER engine (male/Web Speech) before starting ──────────────
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try { window.speechSynthesis.cancel(); } catch { /* ignore */ }
   }
 
   let langCode = language.split("-")[0];
@@ -203,12 +220,117 @@ async function speakWithGoogleTTS(
 
   ttsStopRequested = false;
   const chunks = splitTextIntoChunks(text);
-  console.log(`[GoogleTTS] Speaking ${chunks.length} chunk(s) in ${langCode}, total chars: ${text.length}`);
+  console.log(`[GoogleTTS/female] Speaking ${chunks.length} chunk(s) in ${langCode}`);
 
   for (const chunk of chunks) {
     if (ttsStopRequested) break;
     await playChunk(chunk, langCode);
   }
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * MALE ENGINE — Web Speech API (browser built-in)
+ * Uses the browser's speech synthesis, selecting a male voice.
+ * Respects speed (rate) and volume from global settings.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+function speakWithMaleVoice(
+  text: string,
+  language: string,
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      // No Web Speech API — fall back to Google TTS
+      speakWithGoogleTTS(text, language).then(resolve);
+      return;
+    }
+
+    // ── Stop the OTHER engine (female/Google TTS) before starting ────────────
+    ttsStopRequested = true; // stop any running Google TTS loop
+    if (globalAudioInstance) {
+      try {
+        globalAudioInstance.pause();
+        globalAudioInstance.currentTime = 0;
+        globalAudioInstance.removeAttribute('src');
+        globalAudioInstance.load();
+      } catch { /* ignore */ }
+    }
+    ttsStopRequested = false; // reset so future Google TTS calls work
+
+    window.speechSynthesis.cancel();
+
+    const langCode = language.split('-')[0];
+    const langTag  = language.includes('-') ? language : `${language}-IN`;
+
+    // Speed: map our string values to SpeechSynthesis rate (0.1–10)
+    const speedMap: Record<string, number> = { '0.24': 0.5, '1': 1.0, '1.5': 1.5 };
+    const rate   = speedMap[globalVoiceSpeed] ?? 1.0;
+    const volume = globalVoiceVolume;
+
+    const doSpeak = (voices: SpeechSynthesisVoice[]) => {
+      if (ttsStopRequested) { resolve(); return; }
+
+      // Priority order for finding a male voice:
+      // 1. Exact language + male keyword
+      // 2. Prefix language match + male keyword
+      // 3. Any voice for the language (better than nothing)
+      // 4. Default voice
+      const maleKeywords = ['male', 'man', 'david', 'mark', 'james', 'george', 'paul', 'daniel', 'thomas', 'rishi', 'hemant', 'kendre'];
+      
+      let selectedVoice: SpeechSynthesisVoice | null = null;
+
+      // Try exact locale + male keyword
+      selectedVoice = voices.find(v =>
+        v.lang.toLowerCase().startsWith(langCode.toLowerCase()) &&
+        maleKeywords.some(k => v.name.toLowerCase().includes(k))
+      ) ?? null;
+
+      // Try any voice for the language
+      if (!selectedVoice) {
+        selectedVoice = voices.find(v =>
+          v.lang.toLowerCase().startsWith(langCode.toLowerCase())
+        ) ?? null;
+      }
+
+      // Final fallback — use any male voice available
+      if (!selectedVoice) {
+        selectedVoice = voices.find(v =>
+          maleKeywords.some(k => v.name.toLowerCase().includes(k))
+        ) ?? null;
+      }
+
+      console.log(`[MaleVoice] Selected: ${selectedVoice?.name ?? 'default'} (${selectedVoice?.lang})`);
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang   = langTag;
+      utterance.rate   = rate;
+      utterance.volume = volume;
+      utterance.pitch  = 0.85; // slightly lower pitch reinforces male tone
+      if (selectedVoice) utterance.voice = selectedVoice;
+
+      utterance.onend   = () => resolve();
+      utterance.onerror = () => {
+        // Fall back to Google TTS on error
+        console.warn('[MaleVoice] Web Speech error, falling back to Google TTS');
+        speakWithGoogleTTS(text, language).then(resolve);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      doSpeak(voices);
+    } else {
+      // Voices not loaded yet — wait for them
+      window.speechSynthesis.onvoiceschanged = () => {
+        doSpeak(window.speechSynthesis.getVoices());
+      };
+      // Safety timeout
+      setTimeout(() => doSpeak(window.speechSynthesis.getVoices()), 300);
+    }
+  });
 }
 
 /**
@@ -544,7 +666,9 @@ export function speakText(
   }
   const validLanguage =
     typeof language === "string" && language.length > 0 ? language : "en-IN";
-  console.log(`[Voice] speakText → Google TTS, lang=${validLanguage}, chars=${text.length}`);
+
+  // Always use Google TTS for a consistent, warm voice tone across the app.
+  console.log(`[Voice] speakText → Google TTS, lang=${validLanguage}`);
   return speakWithGoogleTTS(text, validLanguage);
 }
 
@@ -553,6 +677,8 @@ export function speakText(
  */
 export function stopSpeaking(): void {
   ttsStopRequested = true;
+
+  // Stop Google TTS (female engine)
   if (globalAudioInstance) {
     try {
       globalAudioInstance.pause();
@@ -561,6 +687,12 @@ export function stopSpeaking(): void {
       globalAudioInstance.load();
     } catch { /* ignore */ }
   }
+
+  // Stop Web Speech API (male engine)
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try { window.speechSynthesis.cancel(); } catch { /* ignore */ }
+  }
+
   console.log("[Voice] Speech stopped");
 }
 
@@ -767,10 +899,16 @@ export async function transcribeWithGroqWhisper(
       reader.readAsDataURL(audioBlob);
     });
 
-    // Use Python Flask server for speech-to-text
-    const STT_SERVER_URL = process.env.NEXT_PUBLIC_STT_SERVER_URL || 'http://localhost:5000';
+    // Use the internal Next.js API route for speech-to-text (Port 3000)
+    // This allows the frontend and backend to run on the same server.
+    const STT_ENDPOINT = '/api/speech-to-text';
     
-    const response = await fetch(`${STT_SERVER_URL}/api/speech-to-text`, {
+    console.log(`[STT] Attempting to connect to: ${STT_ENDPOINT}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout for serverless cold starts
+    
+    const response = await fetch(STT_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -779,28 +917,47 @@ export async function transcribeWithGroqWhisper(
         language,
         fieldName,  // ← field context for Whisper prompt injection
       }),
+      signal: controller.signal,
     });
 
-    const result = await response.json();
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
+      const result = await response.json();
+      const errorMsg = result.error || `HTTP ${response.status} from STT server`;
+      console.error(`[STT] Error: ${errorMsg}`);
       return {
         success: false,
         text: "",
-        error: result.error || "Transcription failed",
+        error: errorMsg,
       };
     }
+
+    const result = await response.json();
+    console.log(`[STT] ✓ Transcription successful: "${result.text}"`);
 
     return {
       success: true,
       text: result.text,
     };
   } catch (error) {
-    console.error("[GroqTranscription] Error:", error);
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        console.error("[STT] Connection timeout - STT server may not be running");
+        return {
+          success: false,
+          text: "",
+          error: "Speech-to-text server is not responding. Please check if the Python STT server is running.",
+        };
+      }
+      console.error("[STT] Error:", error.message);
+    } else {
+      console.error("[STT] Error:", error);
+    }
     return {
       success: false,
       text: "",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "Speech-to-text service unavailable",
     };
   }
 }

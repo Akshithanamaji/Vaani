@@ -18,7 +18,7 @@ interface VoiceProcessResponse {
 /**
  * Generate voice prompt for any field in any language
  */
-function getVoicePrompt(fieldName: string, language: string): string {
+function getVoicePrompt(fieldName: string, language: string, translatedLabel: string | null = null): string {
   const langCode =
     language && typeof language === "string" ? language.split("-")[0] : "en";
 
@@ -117,7 +117,7 @@ function getVoicePrompt(fieldName: string, language: string): string {
   }
 
   // Generate generic prompt based on field name
-  const fieldLabel = fieldName
+  const fieldLabel = translatedLabel || fieldName
     .replace(/_/g, " ")
     .replace(/([A-Z])/g, " $1")
     .trim();
@@ -648,10 +648,33 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fieldName = searchParams.get("fieldName");
   const language = searchParams.get("language") || "en-IN";
+  const translatedLabel = searchParams.get("translatedLabel");
+  const englishPrompt = searchParams.get("englishPrompt");
 
   // If fieldName is provided, return the voice prompt for that field
   if (fieldName) {
-    const voicePrompt = getVoicePrompt(fieldName, language);
+    let voicePrompt = getVoicePrompt(fieldName, language, translatedLabel);
+    
+    // If the language is not English and we have an explicit English explanation,
+    // translate the rich explanation dynamically for a better voice experience across all 55 applications.
+    if (englishPrompt && !language.startsWith('en')) {
+      try {
+        console.log(`[API] Dynamically translating field explanation for ${fieldName} to ${language}`);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const prompt = `Translate the following form instruction into the language with code '${language}'. The translation must be natural, polite, and conversational, just like a voice assistant asking a user for information. ONLY return the translated text without any quotes or extra explanation. Text: "${englishPrompt}"`;
+        
+        const result = await model.generateContent(prompt);
+        const translatedText = result.response.text().trim();
+        
+        if (translatedText) {
+          voicePrompt = translatedText;
+          console.log(`[API] Translated ${fieldName}: "${englishPrompt}" -> "${voicePrompt}"`);
+        }
+      } catch (e) {
+        console.error("[API] Translation error for voice prompt:", e);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       fieldName,

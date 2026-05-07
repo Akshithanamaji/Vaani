@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { VoiceSettingsProvider } from '@/contexts/VoiceSettingsContext'
 import './globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -42,7 +43,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${plusJakartaSans.variable} font-sans antialiased`}>
         <LanguageProvider>
-          {children}
+          <VoiceSettingsProvider>
+            {children}
+          </VoiceSettingsProvider>
         </LanguageProvider>
         <Analytics />
       </body>

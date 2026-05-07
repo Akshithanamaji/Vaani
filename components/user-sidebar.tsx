@@ -16,8 +16,14 @@ import {
     Bell,
     AlertTriangle,
     ShieldCheck,
-    Languages
+    Languages,
+    Volume2,
+    Zap,
+    Power,
+    Play
 } from 'lucide-react';
+import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
+import { speakText, stopSpeaking } from '@/lib/voice-utils';
 import { getAllActiveSubmissions } from '@/lib/qr-utils';
 import type { SubmittedService } from '@/lib/government-services';
 import { GOVERNMENT_SERVICES, getTranslatedService } from '@/lib/government-services';
@@ -42,6 +48,7 @@ export const UserSidebar = ({
 }: UserSidebarProps) => {
     const router = useRouter();
     const { selectedLanguage, setSelectedLanguage } = useLanguage();
+    const { settings, setSpeed, setVolume, setRepeatInstructions } = useVoiceSettings();
     const langCode = selectedLanguage?.code.split('-')[0] || 'en';
     const t = translations[langCode] || translations['en'];
     const [submissions, setSubmissions] = useState<SubmittedService[]>([]);
@@ -49,6 +56,7 @@ export const UserSidebar = ({
     const [showMessages, setShowMessages] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showLanguages, setShowLanguages] = useState(false);
+    const [showVoiceSettings, setShowVoiceSettings] = useState(false);
     const [activeChatService, setActiveChatService] = useState<{ id: number; name: string } | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [allMessages, setAllMessages] = useState<any[]>([]);
@@ -178,6 +186,12 @@ export const UserSidebar = ({
             setDisplayName(userEmail.split('@')[0] || 'User');
         }
     }, [userEmail]);
+    
+    const playTestVoice = () => {
+        stopSpeaking();
+        const textToTest = langCode === 'hi' ? "नमस्ते, मैं आपकी आवाज़ हूँ।" : "Hello, this is your selected voice.";
+        speakText(textToTest, selectedLanguage?.code || 'en-IN');
+    };
 
 
     return (
@@ -218,7 +232,7 @@ export const UserSidebar = ({
                             <button
                                 onClick={() => {
                                     if (isCollapsed) setIsCollapsed(false);
-                                    setShowLanguages(!showLanguages); setShowForms(false); setShowMessages(false); setShowNotifications(false);
+                                    setShowLanguages(!showLanguages); setShowForms(false); setShowMessages(false); setShowNotifications(false); setShowVoiceSettings(false);
                                 }}
                                 className={`w-full flex items-center justify-between py-4 text-white hover:bg-neutral-800 transition-all text-left font-bold group ${showLanguages ? 'bg-neutral-800' : ''} ${isCollapsed ? 'px-0 justify-center' : 'px-6'}`}
                             >
@@ -241,6 +255,16 @@ export const UserSidebar = ({
                                                 onClick={() => {
                                                     setSelectedLanguage(lang);
                                                     setShowLanguages(false);
+                                                    // Provide audible feedback in the new language
+                                                    setTimeout(() => {
+                                                        const text = lang.code === 'hi' ? "नमस्ते, मैं आपकी आवाज़ हूँ।" : 
+                                                                    lang.code === 'te' ? "నమస్కారం, ఇది మీ వాయిస్." :
+                                                                    lang.code === 'ta' ? "வணக்கம், இது உங்கள் குரல்." :
+                                                                    lang.code === 'kn' ? "ನಮಸ್ಕಾರ, ಇದು ನಿಮ್ಮ ಧ್ವನಿ." :
+                                                                    lang.code === 'ml' ? "നമസ്കാരം, ഇത് നിങ്ങളുടെ ശബ്ദം." :
+                                                                    "Hello, this is your selected voice.";
+                                                        speakText(text, lang.code);
+                                                    }, 100);
                                                 }}
                                                 className={`w-full flex items-center justify-between px-6 py-3 transition-all ${selectedLanguage?.code === lang.code
                                                     ? 'bg-gradient-to-r from-cyan-500/20 to-purple-600/20 text-white border-l-4 border-cyan-400'
@@ -257,6 +281,107 @@ export const UserSidebar = ({
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Voice Settings Selection */}
+                        <div className="relative">
+                            <button
+                                onClick={() => {
+                                    if (isCollapsed) setIsCollapsed(false);
+                                    setShowVoiceSettings(!showVoiceSettings);
+                                    setShowForms(false);
+                                    setShowMessages(false);
+                                    setShowNotifications(false);
+                                    setShowLanguages(false);
+                                }}
+                                className={`w-full flex items-center justify-between py-4 text-white hover:bg-neutral-800 transition-all text-left font-bold group ${showVoiceSettings ? 'bg-neutral-800' : ''} ${isCollapsed ? 'px-0 justify-center' : 'px-6'}`}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <Volume2 className="shrink-0 h-5 w-5 text-emerald-400 group-hover:text-emerald-300 transition-colors" />
+                                    <span className={`text-sm transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>{t.voiceSettings || 'Voice Settings'}</span>
+                                </div>
+                                <ChevronRight className={`h-4 w-4 text-neutral-500 transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'} ${showVoiceSettings ? 'rotate-90' : ''}`} />
+                            </button>
+
+                            {showVoiceSettings && (
+                                <div className="bg-neutral-900 border-y border-neutral-800 p-6 space-y-6">
+                                    {/* Voice Speed */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Zap className="h-4 w-4 text-neutral-400" />
+                                            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{t.voiceSpeed || 'Voice speed'}</p>
+                                        </div>
+                                        <div className="flex bg-black/50 p-1 rounded-xl gap-1">
+                                            {(['slow', 'normal', 'fast'] as const).map((speed) => (
+                                                <button
+                                                    key={speed}
+                                                    onClick={() => {
+                                                        setSpeed(speed);
+                                                        setTimeout(playTestVoice, 50);
+                                                    }}
+                                                    className={`flex-1 py-2 px-2 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${settings.speed === speed
+                                                        ? 'bg-emerald-500 text-white shadow-lg'
+                                                        : 'text-neutral-500 hover:text-white hover:bg-neutral-800'
+                                                        }`}
+                                                >
+                                                    {speed === 'normal' ? (t.normal || 'Normal') : speed === 'slow' ? (t.slow || 'Slow') : (t.fast || 'Fast')}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Volume Control */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Volume2 className="h-4 w-4 text-neutral-400" />
+                                                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{t.volumeControl || 'Volume control'}</p>
+                                            </div>
+                                            <span className="text-[10px] font-black text-emerald-400">{Math.round(settings.volume * 100)}%</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.1"
+                                            value={settings.volume}
+                                            onChange={(e) => setVolume(parseFloat(e.target.value))}
+                                            onMouseUp={() => setTimeout(playTestVoice, 50)}
+                                            onTouchEnd={() => setTimeout(playTestVoice, 50)}
+                                            className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                        />
+                                    </div>
+
+                                    {/* Repeat Instructions */}
+                                    <div className="flex items-center justify-between pt-2">
+                                        <div className="flex items-center gap-2">
+                                            <Power className="h-4 w-4 text-neutral-400" />
+                                            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{t.repeatInstructions || 'Repeat instructions'}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setRepeatInstructions(!settings.repeatInstructions)}
+                                            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${settings.repeatInstructions ? 'bg-emerald-500' : 'bg-neutral-700'
+                                                }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${settings.repeatInstructions ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Test Button */}
+                                    <Button 
+                                        onClick={playTestVoice}
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 transition-all font-bold gap-2 py-5"
+                                    >
+                                        <Play className="h-3 w-3 fill-current" />
+                                        Test Audio
+                                    </Button>
                                 </div>
                             )}
                         </div>

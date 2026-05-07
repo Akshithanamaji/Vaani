@@ -3,9 +3,15 @@ Flask API Server for Speech-to-Text
 A Python Flask implementation that replaces the Next.js /api/speech-to-text route
 """
 
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
+from dotenv import load_dotenv, find_dotenv
+
+# Load environment variables from .env or .env.local
+load_dotenv(find_dotenv('.env.local'))
+load_dotenv(find_dotenv('.env'))
+
 from speech_to_text import GroqSpeechToText
 
 app = Flask(__name__)

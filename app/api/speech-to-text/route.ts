@@ -13,7 +13,12 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { audio, mimeType = "audio/wav", language = "hi", fieldName = "" } = body;
+    let { audio, mimeType = "audio/wav", language = "hi", fieldName = "" } = body;
+
+    // Normalize language code to ISO-639-1 (2 letters) for Groq
+    if (language && language.includes('-')) {
+      language = language.split('-')[0];
+    }
 
     if (!audio) {
       return NextResponse.json(
@@ -85,12 +90,18 @@ export async function POST(request: NextRequest) {
     const audioBlob = new Blob([audioBuffer], { type: mimeType });
     formData.append('file', audioBlob, `audio.${ext}`);
     formData.append('model', 'whisper-large-v3');
-    formData.append('language', language);
-    formData.append('prompt', whisperPrompt); // Context hint → key for accuracy
-    formData.append('temperature', '0');       // Greedy decoding = most deterministic
+    
+    // Only provide language if it's a specific code. 
+    // Passing 'auto' or empty string can cause 400 errors in some Whisper implementations.
+    if (language && language !== 'auto' && language.trim() !== '') {
+      formData.append('language', language);
+    }
+
+    formData.append('prompt', whisperPrompt); 
+    formData.append('temperature', '0');       
 
     console.log(
-      `[SpeechToText] Sending audio to Groq Whisper API (Language: ${language}, Format: ${mimeType}, File: audio.${ext})...`,
+      `[SpeechToText] Sending to Groq (Lang: ${language === 'auto' ? 'AUTO-DETECT' : language}, File: audio.${ext}, Prompt: ${whisperPrompt.substring(0, 30)}...)`,
     );
 
     // Call Groq API

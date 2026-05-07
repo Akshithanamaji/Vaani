@@ -15,8 +15,10 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const text = searchParams.get('text');
         const language = searchParams.get('lang') || 'en';
+        const speed = searchParams.get('speed') || '1';
+        const gender = searchParams.get('gender') || 'female';
 
-        console.log('[TTS Proxy] Request received - text:', text?.substring(0, 50), 'lang:', language);
+        console.log('[TTS Proxy] Request received - text:', text?.substring(0, 50), 'lang:', language, 'speed:', speed, 'gender:', gender);
 
         if (!text || text.trim().length === 0) {
             console.error('[TTS Proxy] Missing or empty text parameter');
@@ -24,7 +26,15 @@ export async function GET(request: NextRequest) {
         }
 
         // Extract base language code (e.g., 'hi' from 'hi-IN')
-        const langCode = language.split('-')[0];
+        let langCode = language.split('-')[0];
+        
+        // Voice Swap Logic for Gender (Simulated for English)
+        if (langCode === 'en' && gender === 'male') {
+            langCode = 'en-GB'; // Often results in a different/deeper model
+        } else if (langCode === 'en' && gender === 'female') {
+            langCode = 'en-US';
+        }
+
         const encodedText = encodeURIComponent(text);
 
         // Headers that mimic a real Chrome browser request
@@ -37,8 +47,8 @@ export async function GET(request: NextRequest) {
 
         // ── PRIMARY: client=gtx — Google's modern neural TTS.
         //   Produces consistent, clear voice tone for ALL languages.
-        //   ttsspeed=1 locks rate to normal so Indian scripts aren't faster/slower than English.
-        const gtxUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${langCode}&client=gtx&sl=${langCode}&ttsspeed=1`;
+        //   ttsspeed is now dynamic based on user settings.
+        const gtxUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${langCode}&client=gtx&sl=${langCode}&ttsspeed=${speed}`;
 
         console.log(`[TTS Proxy] Trying gtx for lang=${langCode}, chars=${text.length}`);
         let response = await fetch(gtxUrl, { headers: browserHeaders });

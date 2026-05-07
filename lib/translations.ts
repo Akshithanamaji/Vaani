@@ -103,6 +103,17 @@ export interface TranslationKeys {
     tooFewDigits: string;
     invalidEmailFormat: string;
     enterExactly: string;
+    // Voice Settings
+    voiceSettings: string;
+    voiceGender: string;
+    voiceSpeed: string;
+    volumeControl: string;
+    repeatInstructions: string;
+    male: string;
+    female: string;
+    slow: string;
+    normal: string;
+    fast: string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -208,6 +219,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'Too few digits. Please enter correctly.',
         invalidEmailFormat: 'Invalid email format. Please enter a correct email address.',
         enterExactly: 'Please enter exactly {COUNT} digits.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     hi: {
         title: 'वॉयस-पावर्ड सरकारी फॉर्म',
@@ -311,6 +333,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'बहुत कम अंक। कृपया सही ढंग से दर्ज करें।',
         invalidEmailFormat: 'अमान्य ईमेल प्रारूप। कृपया सही ईमेल पता दर्ज करें।',
         enterExactly: 'कृपया ठीक {COUNT} अंक दर्ज करें।',
+        // Voice Settings
+        voiceSettings: 'आवाज़ सेटिंग्स',
+        voiceGender: 'आवाज़ का लिंग',
+        voiceSpeed: 'आवाज़ की गति',
+        volumeControl: 'ध्वनि नियंत्रण',
+        repeatInstructions: 'निर्देश दोहराएं',
+        male: 'पुरुष',
+        female: 'महिला',
+        slow: 'धीमा',
+        normal: 'सामान्य',
+        fast: 'तेज़',
     },
     te: {
         title: 'వాయిస్-ఆధారిత ప్రభుత్వ ఫారమ్‌లు',
@@ -414,6 +447,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'చాలా తక్కువ అంకెలు ఉన్నాయి. దయచేసి సరిగ్గా నమోదు చేయండి.',
         invalidEmailFormat: 'చెల్లని ఈమెయిల్ ఫార్మాట్. దయచేసి సరైన ఈమెయిల్ చిరునామాను అందిచండి.',
         enterExactly: 'దయచేసి సరిగ్గా {COUNT} అంకెలను నమోదు చేయండి.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     kn: {
         title: 'ವಾಯಿಸ್-ಆಧಾರಿತ ಸರ್ಕಾರಿ ಫಾರ್ಮ್‌ಗಳು',
@@ -517,6 +561,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'ತುಂಬಾ ಕಡಿಮೆ ಅಂಕೆಗಳು. ದಯವಿಟ್ಟು ಸರಿಯಾಗಿ ನಮೂದಿಸಿ.',
         invalidEmailFormat: 'ಅಮಾನ್ಯ ಇಮೇಲ್ ಫಾರ್ಮ್ಯಾಟ್. ದಯವಿಟ್ಟು ಸರಿಯಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ.',
         enterExactly: 'ದಯವಿಟ್ಟು ಸರಿಯಾಗಿ {COUNT} ಅಂಕೆಗಳನ್ನು ನಮೂದಿಸಿ.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     ta: {
         title: 'குரல் சக்தியால் கட்டப்பட்ட அரசாங்க ஆவணங்கள்',
@@ -620,6 +675,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'மிகக் குறைவான இலக்கங்கள். தயவுசெய்து சரியாக உள்ளிடவும்.',
         invalidEmailFormat: 'தவறான மின்னஞ்சல் வடிவம். சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.',
         enterExactly: 'தயவுசெய்து சரியாக {COUNT} இலக்கங்களை உள்ளிடவும்.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     ml: {
         title: 'കണ്ഠസ്വര ആധാരിത സരകാരി ഫോമുകൾ',
@@ -723,6 +789,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'അക്കങ്ങൾ കുറവാണ്. ദಯവായി ശരിയായി നൽകുക.',
         invalidEmailFormat: 'അസാധുവായ ഇമെയിൽ വിലാസം. ദയവായി ശരിയായ ഇമെയിൽ നൽകുക.',
         enterExactly: 'ദയവായി കൃത്യം {COUNT} അക്കങ്ങൾ നൽകുക.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     mr: {
         title: 'वॉयस-पावर्ड सरकारी फॉर्म',
@@ -826,6 +903,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'खूप कमी अंक आहेत. कृपया नीट प्रविष्ट करा.',
         invalidEmailFormat: 'अवैध ईमेल स्वरूप. कृपया योग्य ईमेल पत्ता प्रविष्ट करा.',
         enterExactly: 'कृपया नक्की {COUNT} अंक प्रविष्ट करा.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     bn: {
         title: 'বাণী AI পোর্টাল',
@@ -929,6 +1017,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'খুব কম সংখ্যা। অনুগ্রহ করে সঠিকভাবে লিখুন।',
         invalidEmailFormat: 'ভুল ইমেল ফরম্যাট। সঠিক ইমেল ঠিকানা লিখুন।',
         enterExactly: 'অনুগ্রহ করে ঠিক {COUNT}টি সংখ্যা লিখুন।',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     gu: {
         title: 'વાણી AI પોર્ટલ',
@@ -1032,6 +1131,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'ખૂબ ઓછા અંક. કૃપા કરીને સાચી રીતે લખો.',
         invalidEmailFormat: 'અમાન્ય ઇમેઇલ ફોર્મેટ. કૃપા કરીને સાચું ઇમેઇલ સરનામું લખો.',
         enterExactly: 'કૃપા કરીને બરાબર {COUNT} અંક લખો.',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     or: {
         title: 'ବାଣୀ AI ପୋର୍ଟାଲ୍',
@@ -1133,8 +1243,19 @@ export const translations: Record<string, TranslationKeys> = {
         invalidInput: 'ଅବୈଧ ଇନପୁଟ୍। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
         tooManyDigits: 'ଅଧିକ ଅଙ୍କ। ଦୟାକରି ସଠିକ୍ ଭାବରେ ପ୍ରବେଶ କରନ୍ତୁ।',
         tooFewDigits: 'ଅତି କମ୍ ଅଙ୍କ। ଦୟାକରି ସଠିକ୍ ଭାବରେ ପ୍ରବେଶ କରନ୍ତୁ।',
-        invalidEmailFormat: 'ଅବୈଧ ଇମେଲ୍ ଫର୍ମାଟ୍। ଦୟାକରି ଏକ ସଠିକ୍ ଇମେଲ୍ ଠିକଣա ପ୍ରବେଶ କରନ୍ତୁ।',
+        invalidEmailFormat: 'ଅବୈଧ ଇମେଲ୍ ଫର୍ମାଟ୍। ଦୟାକରି ଏକ ସଠିକ୍ ଇମେଲ୍ ଠିକଣା ପ୍ରବେଶ କରନ୍ତୁ।',
         enterExactly: 'ଦୟାକରି ଠିକ୍ {COUNT} ଅଙ୍କ ପ୍ରବେଶ କରନ୍ତୁ।',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     pa: {
         title: 'ਵਾਣੀ AI ਪੋਰਟਲ',
@@ -1153,23 +1274,23 @@ export const translations: Record<string, TranslationKeys> = {
         detailsAuth: 'ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਆਪਣੇ ਵੇਰਵੇ ਦਰਜ ਕਰੋ',
         nameLabel: 'ਪੂਰਾ ਨਾਮ',
         namePlaceholder: 'ਆਪਣਾ ਪੂਰਾ ਨਾਮ ਦਰਜ ਕਰੋ',
-        phoneLabel: 'ਫੋਨ ନੰਬਰ',
-        phonePlaceholder: 'ਆਪਣਾ ਫੋਨ ନੰਬਰ ਦਰਜ ਕਰੋ',
+        phoneLabel: 'ਫੋਨ ਨੰਬਰ',
+        phonePlaceholder: 'ਆਪਣਾ ਫੋਨ ਨੰਬਰ ਦਰਜ ਕਰੋ',
         emailLabel: 'ઈમేల ପਤਾ',
-        emailPlaceholder: 'ਆਪਣਾ ਈਮేਲ ପਤਾ ਦਰਜ ਕਰੋ',
+        emailPlaceholder: 'ਆਪਣਾ ਈਮేਲ ਪਤਾ ਦਰਜ ਕਰੋ',
         sendOTP: 'OTP ଭੇਜੋ',
         verifyOTP: 'OTP ଦੀ ਪੁਸ਼ਟੀ ਕਰੋ',
         otpTitle: 'ਆਪਣੀ ਈਮੇਲ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ',
         otpSubtitle: "ਆਪਣੀ ਈਮੇਲ 'ਤੇ ਭੇਜਿਆ ਗਿਆ 6-ਅਂਕਾਂ ਦਾ ਕੋਡ ਦਰਜ ਕਰੋ",
-        otpPlaceholder: 'OTP ଦਰਜ ਕਰੋ',
-        resendOTP: 'OTP ଦੁਬਾਰਾ ଭੇਜੋ',
+        otpPlaceholder: 'OTP ਦਰਜ ਕਰੋ',
+        resendOTP: 'OTP ਦੁਬਾਰਾ ਭੇਜੋ',
         back: 'ਪਿੱਛੇ',
         sending: 'ਭੇਜਿਆ ਜਾ ਰਿਹਾ ਹੈ...',
         verifying: 'ਪੁਸ਼ਟੀ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...',
         invalidEmail: 'ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵੈਧ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ',
         enterName: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਪੂਰਾ ਨਾਮ ਦਰਜ ਕਰੋ',
-        enterPhone: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਫੋਨ ନੰਬਰ ਦਰਜ ਕਰੋ',
-        enterEmail: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਈਮੇਲ ପਤਾ ਦਰਜ ਕਰੋ',
+        enterPhone: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਫੋਨ ਨੰਬਰ ਦਰਜ ਕਰੋ',
+        enterEmail: 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ',
         otpSent: 'OTP ਸਫਲਤਾਪੂਰਵਕ ਭੇਜਿਆ ਗਿਆ!',
         invalidOTP: 'ਗਲਤ OTP। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
         otpExpired: 'OTP ਦੀ ਮਿਆਦ ਖਤਮ ਹੋ ਗਈ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਨਵੇਂ ਲਈ ਬੇਨਤੀ ਕਰੋ।',
@@ -1238,6 +1359,17 @@ export const translations: Record<string, TranslationKeys> = {
         tooFewDigits: 'ਬਹੁਤ ਘੱਟ ਅੰਕ। ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਢੰਗ ਨਾਲ ਦਰਜ ਕਰੋ।',
         invalidEmailFormat: 'ਗਲਤ ਈਮੇਲ ਫਾਰਮੈਟ। ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ।',
         enterExactly: 'ਕਿਰਪਾ ਕਰਕੇ ਠੀਕ {COUNT} ਅੰਕ ਦਰਜ ਕਰੋ।',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     },
     ur: {
         title: 'وانی AI پورٹل',
@@ -1330,13 +1462,28 @@ export const translations: Record<string, TranslationKeys> = {
         pleaseUploadFile: 'برائے مہربانی ایک فائل اپ لوڈ کریں',
         pleaseFillField: 'برائے مہربانی یہ فیلڈ بھریں',
         failedToProcess: 'وائس ان پٹ پر کارروائی کرنے میں ناکام',
-        failedToCreate: 'جمع کرانا بنانے میں ناکام۔ برائے مہربانی دوبارہ کوشش کریں।',
-        networkError: 'نیٹ ورک کی خرابی۔ برائے مہربانی دوبارہ کوشش کریں।',
+        failedToCreate: 'جمع کرانا بنانے میں ناکام۔ برائے مہربانی دوبارہ کوشش کریں۔',
+        networkError: 'نیٹ ورک کی خرابی۔ برائے مہربانی دوبارہ کوشش کریں۔',
         microphoneNotSupported: 'اس براؤزر میں آواز کی شناخت تعاون یافتہ نہیں ہے۔ برائے مہربانی Chrome استعمال کریں۔',
         couldNotStartMic: 'مائیکروفون شروع نہیں ہو سکا۔ برائے مہربانی ریفریش کریں اور دوبارہ کوشش کریں۔',
         micAccessDenied: 'مائیکروفون رسائی مسترد کر دی گئی۔ برائے مہربانی اپنی براؤزر کی ترتیبات چیک کریں۔',
         securityError: 'حفاظتی خرابی۔ برائے مہربانی HTTPS یا localhost استعمال کریں۔',
         invalidInput: 'غلط ان پٹ۔ براہ کرم دوبارہ کوشش کریں۔',
+        tooManyDigits: 'بہت زیادہ ہندسے۔ براہ کرم درست طریقے سے درج کریں۔',
+        tooFewDigits: 'بہت کم ہندسے۔ براہ کرم درست طریقے سے درج کریں۔',
+        invalidEmailFormat: 'ای میل کا غلط فارمیٹ۔ براہ کرم صحیح ای میل پتہ درج کریں۔',
+        enterExactly: 'براہ کرم بالکل {COUNT} ہندسے درج کریں۔',
+        // Voice Settings
+        voiceSettings: 'Voice Settings',
+        voiceGender: 'Voice Gender',
+        voiceSpeed: 'Voice Speed',
+        volumeControl: 'Volume Control',
+        repeatInstructions: 'Repeat Instructions',
+        male: 'Male',
+        female: 'Female',
+        slow: 'Slow',
+        normal: 'Normal',
+        fast: 'Fast',
     }
 };
 

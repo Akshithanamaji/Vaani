@@ -796,13 +796,14 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
 
   // Play voice instructions in ALL 12 languages — one by one via TTS proxy
   // Exact order: English, Hindi, Telugu, Tamil, Malayalam, Kannada, Marathi, Bengali, Gujarati, Odia, Punjabi, Urdu
-  const playVoiceInstructions = () => {
+  const playVoiceInstructions = async () => {
     userHasInteracted.current = true;
     if (isPlayingInstructionRef.current) return;
 
     // Stop any previous playback cleanly
     stopAudio();
     setIsPlayingInstructionSync(true);
+    console.log('[🎤 VOICE] Starting instruction playback for all 12 languages');
 
     // Exact order requested by user (line 1 → line 12)
     const sequence = [
@@ -820,92 +821,142 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
       { label: 'Urdu', lang: 'ur' },
     ];
 
-    // Per-invocation cancellation flag — prevents ghost callbacks from firing
-    // after stopAudio() is called mid-sequence.
-    let cancelled = false;
-    cancelPlaybackRef.current = () => { cancelled = true; };
-
-    let idx = 0;
-
-    const playOne = async () => {
-      // Bail out if cancelled or finished
-      if (cancelled || idx >= sequence.length) {
-        if (!cancelled) setIsPlayingInstructionSync(false);
-        return;
-      }
-
-      const { lang } = sequence[idx];
-      const text = voiceInstructions[lang];
-
-      if (!text) {
-        idx++;
-        playOne();
-        return;
-      }
-
-      let blobUrl: string | null = null;
+    // Pre-fetch all audio blobs first (no browser autoplay restrictions on fetching)
+    console.log('[🎤 VOICE] Pre-fetching all TTS audio for 12 languages...');
+    const audioBlobs: { lang: string; label: string; blob: Blob | null; error?: string }[] = [];
+    
+    for (const { label, lang } of sequence) {
       try {
-        const res = await fetch(`/api/tts-proxy?text=${encodeURIComponent(text)}&lang=${lang}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = voiceInstructions[lang];
+        if (!text) {
+          console.warn(`[🎤 VOICE] ⚠️ Missing text for ${lang}, skipping`);
+          audioBlobs.push({ lang, label, blob: null, error: 'No text' });
+          continue;
+        }
 
-        // Check cancellation again after the async fetch
-        if (cancelled) return;
+        console.log(`[🎤 VOICE] Fetching ${label} [${lang}]...`);
+        const res = await fetch(`/api/tts-proxy?text=${encodeURIComponent(text)}&lang=${lang}`);
+        if (!res.ok) {
+          audioBlobs.push({ lang, label, blob: null, error: `HTTP ${res.status}` });
+          console.warn(`[🎤 VOICE] ⚠️ Failed to fetch ${label}: HTTP ${res.status}`);
+          continue;
+        }
 
         const blob = await res.blob();
-        blobUrl = URL.createObjectURL(blob);
-
-        // Stop the previous audio element and clear its handlers BEFORE creating the new one
-        if (audioRef.current) {
-          audioRef.current.onended = null;
-          audioRef.current.onerror = null;
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-          audioRef.current = null;
-        }
-
-        // Check cancellation one more time after sync cleanup
-        if (cancelled) {
-          if (blobUrl) URL.revokeObjectURL(blobUrl);
-          return;
-        }
-
-        const audio = new Audio(blobUrl);
-        audioRef.current = audio;
-        audio.volume = 1.0;
-        // Normalise playback rate to 1 (prevent browser or OS rate drift)
-        audio.playbackRate = 1.0;
-        // Prevent automatic looping
-        audio.loop = false;
-
-        const cleanup = () => {
-          if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
-          // Detach handlers so they can never fire twice
-          audio.onended = null;
-          audio.onerror = null;
-        };
-
-        const next = () => {
-          cleanup();
-          if (cancelled) return;
-          idx++;
-          // 400 ms pause between languages for natural pacing
-          setTimeout(playOne, 400);
-        };
-
-        audio.onended = next;
-        audio.onerror = next;
-        await audio.play();
+        console.log(`[🎤 VOICE] ✓ Fetched ${label}: ${blob.size} bytes`);
+        audioBlobs.push({ lang, label, blob });
       } catch (err) {
-        if (blobUrl) URL.revokeObjectURL(blobUrl);
-        if (cancelled) return;
-        console.warn(`TTS skip [${lang}]:`, err);
-        idx++;
-        playOne(); // skip and continue on error
+        console.error(`[🎤 VOICE] ❌ Fetch error for ${label}:`, err);
+        audioBlobs.push({ lang, label, blob: null, error: String(err) });
       }
+    }
+
+    console.log(`[🎤 VOICE] Pre-fetch complete. Now playing sequentially...`);
+
+    // Now play them sequentially
+    let cancelled = false;
+    cancelPlaybackRef.current = () => { 
+      cancelled = true; 
+      console.log('[🎤 VOICE] Playback cancelled');
     };
 
-    // Kick off starting with line 1 (English)
-    playOne();
+    const playSequence = async () => {
+      for (let i = 0; i < audioBlobs.length; i++) {
+        if (cancelled) {
+          console.log('[🎤 VOICE] Playback stopped by user');
+          break;
+        }
+
+        const { lang, label, blob, error } = audioBlobs[i];
+
+        if (!blob) {
+          console.warn(`[🎤 VOICE] Skipping ${label}: ${error}`);
+          continue;
+        }
+
+        try {
+          const blobUrl = URL.createObjectURL(blob);
+
+          // Stop the previous audio element and clear its handlers BEFORE creating the new one
+          if (audioRef.current) {
+            audioRef.current.onended = null;
+            audioRef.current.onerror = null;
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
+          }
+
+          if (cancelled) {
+            URL.revokeObjectURL(blobUrl);
+            break;
+          }
+
+          const audio = new Audio(blobUrl);
+          audioRef.current = audio;
+          audio.volume = 1.0;
+          audio.playbackRate = 1.0;
+          audio.loop = false;
+
+          let audioCleanedUp = false;
+          const cleanup = () => {
+            if (!audioCleanedUp) {
+              audioCleanedUp = true;
+              if (blobUrl) URL.revokeObjectURL(blobUrl);
+              audio.onended = null;
+              audio.onerror = null;
+            }
+          };
+
+          console.log(`[🎤 VOICE] (${i + 1}/12) Playing ${label}...`);
+          
+          // Create a promise that resolves when audio finishes or errors
+          const audioPromise = new Promise<void>((resolve) => {
+            audio.onended = () => {
+              console.log(`[🎤 VOICE] ✓ Finished ${label}`);
+              cleanup();
+              resolve();
+            };
+            
+            audio.onerror = (err) => {
+              console.error(`[🎤 VOICE] Audio playback error for ${label}:`, err);
+              cleanup();
+              resolve(); // Continue to next language on error
+            };
+
+            // Play audio - this should work because we're in the async chain started by user click
+            audio.play().catch((err) => {
+              if (err.name === 'NotAllowedError') {
+                console.warn(`[🎤 VOICE] Browser blocked autoplay for ${label} (NotAllowedError). User may need to interact with page first.`);
+              } else if (err.name === 'NotSupportedError') {
+                console.warn(`[🎤 VOICE] Browser doesn't support this audio format for ${label}`);
+              } else {
+                console.error(`[🎤 VOICE] Failed to play ${label}:`, err.message);
+              }
+              cleanup();
+              resolve(); // Continue anyway
+            });
+          });
+
+          // Wait for this audio to finish before moving to next
+          await audioPromise;
+
+          // 400ms pause between languages for natural pacing
+          if (i < audioBlobs.length - 1 && !cancelled) {
+            await new Promise(r => setTimeout(r, 400));
+          }
+        } catch (err) {
+          console.error(`[🎤 VOICE] Unexpected error playing ${label}:`, err);
+        }
+      }
+
+      if (!cancelled) {
+        console.log('[🎤 VOICE] ✅ All 12 languages played successfully');
+      }
+      setIsPlayingInstructionSync(false);
+    };
+
+    // Start the sequence
+    playSequence();
   };
 
   // Play language confirmation message when language is selected
@@ -914,10 +965,12 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
 
     // Only play if language has changed
     if (lastPlayedLanguageCode === selectedLang.code) {
+      console.log(`[🎤 LANG] Language confirmation already played for ${selectedLang.code}`);
       return;
     }
 
     setLastPlayedLanguageCode(selectedLang.code);
+    console.log(`[🎤 LANG] Playing confirmation for ${selectedLang.name} [${selectedLang.code}]`);
 
     try {
       // Get the confirmation message in the user's selected language
@@ -925,49 +978,83 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
         languageConfirmationMessages['en']?.[selectedLang.code] ||
         `You have selected ${selectedLang.name}`;
 
+      console.log(`[🎤 LANG] Fetching TTS for: "${confirmationText.substring(0, 50)}..."`);
       const response = await fetch(`/api/tts-proxy?text=${encodeURIComponent(confirmationText)}&lang=${selectedLang.code}`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
+      if (!response.ok) {
+        console.error(`[🎤 LANG] TTS fetch failed: HTTP ${response.status}`);
+        return;
+      }
+      
+      const blob = await response.blob();
+      console.log(`[🎤 LANG] Received audio blob: ${blob.size} bytes`);
+      const blobUrl = URL.createObjectURL(blob);
 
-        // Stop any previous audio (clears handlers + pauses)
-        stopAudio();
+      // Stop any previous audio (clears handlers + pauses)
+      stopAudio();
 
-        const audio = new Audio(blobUrl);
-        audio.volume = 1.0;
-        audio.playbackRate = 1.0;
-        audio.loop = false;
-        audioRef.current = audio;
+      const audio = new Audio(blobUrl);
+      audio.volume = 1.0;
+      audio.playbackRate = 1.0;
+      audio.loop = false;
+      audioRef.current = audio;
 
-        const handleCompletion = () => {
+      let audioCleanedUp = false;
+      const handleCompletion = () => {
+        if (!audioCleanedUp) {
+          audioCleanedUp = true;
           URL.revokeObjectURL(blobUrl);
           audio.onended = null;
           audio.onerror = null;
-        };
-
-        audio.onended = handleCompletion;
-        audio.onerror = handleCompletion;
-
-        try {
-          await audioRef.current.play();
-        } catch (playError: any) {
-          // Silently ignore — NotAllowedError is a browser autoplay policy restriction,
-          // not a real error. AbortError means another sound interrupted this one.
-          handleCompletion();
         }
+      };
+
+      audio.onended = () => {
+        console.log(`[🎤 LANG] ✓ Confirmation finished for ${selectedLang.name}`);
+        handleCompletion();
+      };
+      
+      audio.onerror = (err) => {
+        console.error(`[🎤 LANG] Audio error for ${selectedLang.name}:`, err);
+        handleCompletion();
+      };
+
+      console.log(`[🎤 LANG] ▶️ Playing confirmed message for ${selectedLang.name}`);
+      try {
+        await audio.play();
+      } catch (playError: any) {
+        console.error(`[🎤 LANG] Play failed for ${selectedLang.name}:`, playError.name, playError.message);
+        if (playError.name === 'NotAllowedError') {
+          console.warn(`[🎤 LANG] Browser blocked autoplay. User may need to interact with page.`);
+        }
+        handleCompletion();
       }
-    } catch {
-      // Silently ignore network/fetch errors for optional confirmation audio
+    } catch (err) {
+      console.error(`[🎤 LANG] Unexpected error:`, err);
     }
   };
 
+  // Mark as interacted on mount because to reach this component, 
+  // the user must have clicked the splash screen (gesture).
+  useEffect(() => {
+    userHasInteracted.current = true;
+  }, []);
+
   // Play confirmation only when the user has already interacted with the page.
-  // Dep array is always exactly [selectedLanguage?.code] — stable size, no React warning.
-  // We read isPlayingInstructionRef (not state) so it never needs to be a dep.
   useEffect(() => {
     if (!selectedLanguage || isPlayingInstructionRef.current) return;
     if (!userHasInteracted.current) return;
-    playLanguageConfirmation(selectedLanguage);
+    
+    console.log(`[🎤 LANG] Language changed to ${selectedLanguage.name}, scheduling confirmation`);
+    
+    // Small delay to ensure it doesn't overlap with previous sounds
+    const t = setTimeout(async () => {
+      console.log(`[🎤 LANG] Executing confirmation playback (after 200ms delay)`);
+      await playLanguageConfirmation(selectedLanguage);
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      console.log(`[🎤 LANG] Language selection effect cleanup`);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLanguage?.code]);
 
@@ -986,6 +1073,7 @@ export function LandingPage({ onGetStarted, onStartSpeaking, selectedLanguage }:
     // STRICT BLOCK: If no language selected, play voice instructions in all languages
     // do NOT open sign-in page
     if (!selectedLanguage) {
+      console.log('[🎤 VOICE] No language selected, triggering voice instructions in all languages');
       playVoiceInstructions();
       return; // <-- NEVER reaches onGetStarted()
     }

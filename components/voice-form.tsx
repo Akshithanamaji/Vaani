@@ -79,32 +79,51 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
 
       // ── 1. Determine if it's a numeric field ───────────────────────────────
       const fieldNameLower = fieldId.toLowerCase();
-      const isNumericField = 
-        fieldNameLower.includes('phone') || 
-        fieldNameLower.includes('mobile') || 
-        fieldNameLower.includes('aadhaar') || 
-        fieldNameLower.includes('pincode') || 
+      const isNumericField =
+        fieldNameLower.includes('phone') ||
+        fieldNameLower.includes('mobile') ||
+        fieldNameLower.includes('aadhaar') ||
+        fieldNameLower.includes('pincode') ||
         fieldNameLower.includes('pin_code') ||
         currentField.type === 'tel';
-      
+
       if (isNumericField) {
         // Clean transcript: remove spaces and non-digits for comparison
         processedValue = value.replace(/\s+/g, '').replace(/[^0-9]/g, '');
-        
+
         // Aadhaar (12 digits)
         if (fieldNameLower.includes('aadhaar')) {
-           if (processedValue.length > 12) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '12');
-           else if (processedValue.length < 12) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '12');
+          if (processedValue.length > 12) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '12');
+          else if (processedValue.length < 12) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '12');
         }
         // Phone (10 digits)
         else if (fieldNameLower.includes('phone') || fieldNameLower.includes('mobile')) {
-           if (processedValue.length > 10) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '10');
-           else if (processedValue.length < 10) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '10');
+          if (processedValue.length > 10) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '10');
+          else if (processedValue.length < 10) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '10');
         }
         // Pincode (6 digits)
         else if (fieldNameLower.includes('pincode') || fieldNameLower.includes('pin_code')) {
-           if (processedValue.length > 6) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '6');
-           else if (processedValue.length < 6) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '6');
+          if (processedValue.length > 6) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '6');
+          else if (processedValue.length < 6) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '6');
+        }
+      }
+
+      // ── Date Validation (filter out invalid entries like "na", "Nada", etc) ──
+      if (currentField.type === 'date') {
+        const trimmedValue = processedValue.trim().toLowerCase();
+
+        // Reject invalid entries
+        if (trimmedValue === 'na' || trimmedValue === 'nada' || !trimmedValue) {
+          errorMsg = t.invalidInput || 'Please provide a valid date';
+        } else if (!/^\d{4}-\d{2}-\d{2}$/.test(processedValue)) {
+          // Date input requires yyyy-MM-dd format
+          errorMsg = t.invalidInput || 'Please provide a date in the format YYYY-MM-DD';
+        } else {
+          // Validate that it's an actual valid date
+          const date = new Date(processedValue);
+          if (isNaN(date.getTime())) {
+            errorMsg = t.invalidInput || 'Please provide a valid date';
+          }
         }
       }
 
@@ -120,8 +139,8 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
       if (!errorMsg && currentField.validation?.pattern) {
         const regex = new RegExp(currentField.validation.pattern);
         if (!regex.test(processedValue)) {
-            const lang = (language || 'en-IN').split('-')[0];
-            errorMsg = currentField.validation.message?.[lang] || currentField.validation.message?.['en'] || t.invalidInput;
+          const lang = (language || 'en-IN').split('-')[0];
+          errorMsg = currentField.validation.message?.[lang] || currentField.validation.message?.['en'] || t.invalidInput;
         }
       }
 
@@ -140,7 +159,7 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
       // ── Success: Save and Advance ─────────────────────────────────────────
       setFormData(prev => ({ ...prev, [fieldId]: processedValue }));
       setVoiceError(null);
-      
+
       setTimeout(() => {
         if (currentFieldIndex < fields.length - 1) {
           setCurrentFieldIndex(i => i + 1);
@@ -160,7 +179,7 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
   // ── Show interim speech result live in the current field ──────────────────
   useEffect(() => {
     if (autoVoice.state.interim && currentField?.id &&
-        currentField.type !== 'file' && !currentField.requiresFile) {
+      currentField.type !== 'file' && !currentField.requiresFile) {
       setFormData(prev => ({ ...prev, [currentField.id]: autoVoice.state.interim }));
     }
   }, [autoVoice.state.interim]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -724,7 +743,7 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                     {getFieldLabel(currentField?.id, currentField?.label)}
                   </label>
                   <div className="mb-4 text-sm text-neutral-400 leading-relaxed">
-                    {currentField?.description || `${t.pleaseProvide} ${getFieldLabel(currentField?.id, currentField?.label).toLowerCase()}`}
+                    {currentField?.description || `${t.pleaseProvide} ${(getFieldLabel(currentField?.id, currentField?.label) || '').toLowerCase()}`}
                   </div>
                 </div>
 
@@ -793,18 +812,25 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                           ? (LISTENING_LABELS[autoVoice.langCode] || '🎤 Listening…')
                           : 'Tap here to answer by voice, or type…'
                       }
-                      className={`text-lg min-h-[140px] border-2 focus:ring-2 rounded-xl px-6 py-5 transition-all duration-300 bg-neutral-900 text-white placeholder:text-neutral-500 shadow-sm hover:shadow-md resize-none ${
-                        autoVoice.state.phase === 'listening' || autoVoice.state.phase === 'confirm_listen'
+                      className={`text-lg min-h-[140px] border-2 focus:ring-2 rounded-xl px-6 py-5 transition-all duration-300 bg-neutral-900 text-white placeholder:text-neutral-500 shadow-sm hover:shadow-md resize-none ${autoVoice.state.phase === 'listening' || autoVoice.state.phase === 'confirm_listen'
                           ? 'border-red-500/70 focus:border-red-500 focus:ring-red-500/20'
                           : 'border-neutral-800 focus:border-cyan-500 focus:ring-cyan-500/20'
-                      }`}
+                        }`}
                     />
                   ) : (
                     <>
                       <Input
                         type={currentField?.type || 'text'}
                         value={formData[currentField?.id] || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, [currentField.id]: e.target.value }))}
+                        onChange={(e) => {
+                          let newValue = e.target.value;
+                          // For date inputs, ensure the value is in valid yyyy-MM-dd format
+                          if (currentField?.type === 'date' && newValue && !/^\d{4}-\d{2}-\d{2}$/.test(newValue)) {
+                            // Don't allow invalid date values
+                            return;
+                          }
+                          setFormData(prev => ({ ...prev, [currentField.id]: newValue }));
+                        }}
                         onClick={() => {
                           // Allow tap-to-retry if the voice engine crashed or stopped
                           if (autoVoice.state.phase === 'idle' || voiceError) {
@@ -816,8 +842,8 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                           autoVoice.state.phase === 'listening'
                             ? (LISTENING_LABELS[autoVoice.langCode] || '🎤 Listening…')
                             : autoVoice.state.phase === 'confirm_listen'
-                            ? '🎤 Say YES or NO…'
-                            : 'Tap here to answer by voice, or type…'
+                              ? '🎤 Say YES or NO…'
+                              : 'Tap here to answer by voice, or type…'
                         }
                         style={{ colorScheme: 'dark' }}
                         className={
@@ -825,8 +851,8 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                           (autoVoice.state.phase === 'listening' || autoVoice.state.phase === 'confirm_listen'
                             ? 'border-red-500/70 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 bg-neutral-900'
                             : currentField?.type === 'date'
-                            ? 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900 cursor-pointer'
-                            : 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900')
+                              ? 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900 cursor-pointer'
+                              : 'border-neutral-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-neutral-900')
                         }
                       />
 

@@ -91,9 +91,12 @@ const QRDisplayComponent = ({ submission, language, onNewApplication }: QRDispla
     };
 
     const message = messages[language] || messages['en-IN'];
-    speakText(message, language);
+    const t = setTimeout(() => {
+      speakText(message, language);
+    }, 100);
 
     return () => {
+      clearTimeout(t);
       stopSpeaking();
     };
   }, [submission, language]);

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { speakText } from '@/lib/voice-utils';
 
 interface SplashScreenProps {
     onComplete: () => void;
@@ -18,7 +19,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
     // Entire screen is clickable once logo has animated in
     const handleClick = () => {
-        if (tapReady) onComplete();
+        if (tapReady) {
+            // Synchronously unlock browser autoplay policies
+            const unlockAudio = new Audio("data:audio/mp3;base64,//OigAAAAAAQQPExQAAABgAA");
+            unlockAudio.play().catch(() => {});
+
+            // Instantly proceed to the Language Selector, where the 12-language audio loop will begin
+            onComplete();
+        }
     };
 
     return (
