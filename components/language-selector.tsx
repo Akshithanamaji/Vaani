@@ -98,15 +98,30 @@ export function LanguageSelector({ isOpen, onClose, onLanguageSelect }: Language
       const explanation = VOICE_EXPLANATIONS[langCode];
       const language = AVAILABLE_LANGUAGES.find(l => l.code === langCode);
 
+      // Pre-warm the next language audio in background to minimize network gaps
+      if (i < langCodes.length - 1) {
+        const nextLangCode = langCodes[i + 1];
+        const nextExp = VOICE_EXPLANATIONS[nextLangCode];
+        const nextLang = AVAILABLE_LANGUAGES.find(l => l.code === nextLangCode);
+        const nextV = nextLang?.voiceCode || nextLangCode;
+        const nextUrl = `/api/tts-proxy?text=${encodeURIComponent(nextExp)}&lang=${nextV}&speed=1`;
+        
+        // Use a hidden audio object to trigger browser caching
+        const preloader = new Audio();
+        preloader.preload = 'auto';
+        preloader.src = nextUrl;
+      }
+
       try {
         console.log(`[🎤 LANG-SELECTOR] (${i + 1}/12) Speaking ${language?.name}...`);
 
         // Use the shared speakText utility which handles chunks and error fallbacks
         await speakText(explanation, language?.voiceCode || langCode);
 
-        // 300ms pause between languages
+        // Minimal pause between languages (10ms) to make it feel snappy
+        // The natural end of the audio already provides enough separation
         if (i < langCodes.length - 1 && !cancelled) {
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 10));
         }
       } catch (err) {
         console.error(`[🎤 LANG-SELECTOR] Error for ${language?.name}:`, err);

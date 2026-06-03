@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import Groq, { toFile } from "groq-sdk";
 
 /**
  * POST /api/speech-to-text
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    const groq = new Groq({ apiKey });
 
     // Convert base64 to buffer
     const audioBuffer = Buffer.from(audio, "base64");
@@ -79,84 +82,48 @@ export async function POST(request: NextRequest) {
       Object.entries(WHISPER_PROMPTS).find(([k]) => fieldKey.includes(k))?.[1] ||
       'This is a spoken response for an Indian government form. Transcribe accurately.';
 
-    // Create FormData for Groq API
     // Groq uses the file EXTENSION to detect format, so the name MUST match the mimeType
     const ext = mimeType.includes('mp4') ? 'mp4'
       : mimeType.includes('ogg') ? 'ogg'
         : mimeType.includes('mp3') || mimeType.includes('mpeg') ? 'mp3'
           : 'webm'; // default to webm (chrome/edge default)
 
-    const formData = new FormData();
-    const audioBlob = new Blob([audioBuffer], { type: mimeType });
-    formData.append('file', audioBlob, `audio.${ext}`);
-    formData.append('model', 'whisper-large-v3');
+    const file = await toFile(audioBuffer, `audio.${ext}`, { type: mimeType });
     
     // Only provide language if it's a specific code. 
-    // Passing 'auto' or empty string can cause 400 errors in some Whisper implementations.
+    const options: any = {
+      file: file,
+      model: 'whisper-large-v3',
+      prompt: whisperPrompt,
+      temperature: 0,
+    };
+    
     if (language && language !== 'auto' && language.trim() !== '') {
-      formData.append('language', language);
+      options.language = language;
     }
-
-    formData.append('prompt', whisperPrompt); 
-    formData.append('temperature', '0');       
 
     console.log(
-      `[SpeechToText] Sending to Groq (Lang: ${language === 'auto' ? 'AUTO-DETECT' : language}, File: audio.${ext}, Prompt: ${whisperPrompt.substring(0, 30)}...)`,
+      `[SpeechToText] Sending to Groq SDK (Lang: ${language === 'auto' ? 'AUTO-DETECT' : language}, File: audio.${ext}, Prompt: ${whisperPrompt.substring(0, 30)}...)`,
     );
 
-    // Call Groq API
-    const groqResponse = await fetch(
-      "https://api.groq.com/openai/v1/audio/transcriptions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: formData,
-      },
-    );
+    // Call Groq API via SDK
+    const transcription = await groq.audio.transcriptions.create(options);
 
-    if (!groqResponse.ok) {
-      // Read raw text first — Groq sometimes returns non-JSON errors (rate limit HTML pages etc.)
-      const rawText = await groqResponse.text();
-      console.error(`[SpeechToText] Groq API error (${groqResponse.status}):`, rawText);
-
-      let errorData: any = { message: rawText };
-      try { errorData = JSON.parse(rawText); } catch (_) { /* keep raw text */ }
-
-      // Surface rate-limit hint clearly
-      const isRateLimit = groqResponse.status === 429;
-      const isInvalidKey = groqResponse.status === 401;
-
-      return NextResponse.json(
-        {
-          error: isRateLimit
-            ? "Groq rate limit reached. Please wait a moment and try again."
-            : isInvalidKey
-              ? "Invalid Groq API key. Check your GROQ_API_KEY in .env.local"
-              : `Groq transcription failed (${groqResponse.status})`,
-          details: errorData,
-        },
-        { status: groqResponse.status },
-      );
-    }
-
-    const result = await groqResponse.json();
-    console.log("[SpeechToText] Transcription successful:", result.text);
+    console.log("[SpeechToText] Transcription successful:", transcription.text);
 
     return NextResponse.json({
       success: true,
-      text: result.text,
+      text: transcription.text,
       language: language,
-      raw: result,
+      raw: transcription,
     });
   } catch (error: any) {
     // Log the full error so it appears in the Next.js terminal
     console.error("[SpeechToText] Unexpected error:", error?.message || error);
     return NextResponse.json(
       {
-        error: "Failed to process speech-to-text",
-        message: error instanceof Error ? error.message : String(error),
+        error: `Failed to process speech-to-text: ${error instanceof Error ? error.message : String(error)}`,
+        message: error instanceof Error ? error.stack : String(error),
       },
       { status: 500 },
     );

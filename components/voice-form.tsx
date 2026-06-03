@@ -57,6 +57,12 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
   const fields = service?.fields || [];
   const currentField = fields[currentFieldIndex];
 
+  // ── Refs so callbacks always see the latest values (avoids stale closures) ──
+  const currentFieldIndexRef = useRef(currentFieldIndex);
+  const currentFieldRef = useRef(currentField);
+  useEffect(() => { currentFieldIndexRef.current = currentFieldIndex; }, [currentFieldIndex]);
+  useEffect(() => { currentFieldRef.current = fields[currentFieldIndex]; }, [currentFieldIndex, fields]);
+
   const langCode = (typeof language === 'string' ? language.split('-')[0] : 'en');
   const t = translations[langCode] || translations['en'];
   const translatedService = service ? getTranslatedService(service, langCode) : service;
@@ -69,9 +75,12 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
   // ── Auto-voice engine ─────────────────────────────────────────────────────
   const autoVoice = useAutoVoice({
     language,
-    skipConfirm: true,   // save immediately — no YES/NO round-trip
+    skipConfirm: false,   // detect → show detected text → user confirms → next field
     onConfirmed: (value) => {
-      const fieldId = currentField?.id;
+      // Use refs to avoid stale closure — always read the current field/index
+      const activeField = currentFieldRef.current;
+      const activeIndex = currentFieldIndexRef.current;
+      const fieldId = activeField?.id;
       if (!fieldId) return;
 
       let processedValue = value;
@@ -85,41 +94,31 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
         fieldNameLower.includes('aadhaar') ||
         fieldNameLower.includes('pincode') ||
         fieldNameLower.includes('pin_code') ||
-        currentField.type === 'tel';
+        activeField.type === 'tel';
 
       if (isNumericField) {
-        // Clean transcript: remove spaces and non-digits for comparison
         processedValue = value.replace(/\s+/g, '').replace(/[^0-9]/g, '');
 
-        // Aadhaar (12 digits)
         if (fieldNameLower.includes('aadhaar')) {
           if (processedValue.length > 12) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '12');
           else if (processedValue.length < 12) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '12');
-        }
-        // Phone (10 digits)
-        else if (fieldNameLower.includes('phone') || fieldNameLower.includes('mobile')) {
+        } else if (fieldNameLower.includes('phone') || fieldNameLower.includes('mobile')) {
           if (processedValue.length > 10) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '10');
           else if (processedValue.length < 10) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '10');
-        }
-        // Pincode (6 digits)
-        else if (fieldNameLower.includes('pincode') || fieldNameLower.includes('pin_code')) {
+        } else if (fieldNameLower.includes('pincode') || fieldNameLower.includes('pin_code')) {
           if (processedValue.length > 6) errorMsg = t.tooManyDigits + " " + t.enterExactly.replace('{COUNT}', '6');
           else if (processedValue.length < 6) errorMsg = t.tooFewDigits + " " + t.enterExactly.replace('{COUNT}', '6');
         }
       }
 
-      // ── Date Validation (filter out invalid entries like "na", "Nada", etc) ──
-      if (currentField.type === 'date') {
+      // ── Date Validation ────────────────────────────────────────────────────
+      if (activeField.type === 'date') {
         const trimmedValue = processedValue.trim().toLowerCase();
-
-        // Reject invalid entries
         if (trimmedValue === 'na' || trimmedValue === 'nada' || !trimmedValue) {
           errorMsg = t.invalidInput || 'Please provide a valid date';
         } else if (!/^\d{4}-\d{2}-\d{2}$/.test(processedValue)) {
-          // Date input requires yyyy-MM-dd format
           errorMsg = t.invalidInput || 'Please provide a date in the format YYYY-MM-DD';
         } else {
-          // Validate that it's an actual valid date
           const date = new Date(processedValue);
           if (isNaN(date.getTime())) {
             errorMsg = t.invalidInput || 'Please provide a valid date';
@@ -127,31 +126,29 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
         }
       }
 
-      // ── 2. Email Validation ───────────────────────────────────────────────
-      if (currentField.type === 'email' && processedValue.trim().toLowerCase() !== 'skip') {
+      // ── Email Validation ───────────────────────────────────────────────────
+      if (activeField.type === 'email' && processedValue.trim().toLowerCase() !== 'skip') {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(processedValue.trim())) {
           errorMsg = t.invalidEmailFormat;
         }
       }
 
-      // ── 3. General Regex Validation (from government-services.ts) ──────────
-      if (!errorMsg && currentField.validation?.pattern) {
-        const regex = new RegExp(currentField.validation.pattern);
+      // ── General Regex Validation ───────────────────────────────────────────
+      if (!errorMsg && activeField.validation?.pattern) {
+        const regex = new RegExp(activeField.validation.pattern);
         if (!regex.test(processedValue)) {
           const lang = (language || 'en-IN').split('-')[0];
-          errorMsg = currentField.validation.message?.[lang] || currentField.validation.message?.['en'] || t.invalidInput;
+          errorMsg = activeField.validation.message?.[lang] || activeField.validation.message?.['en'] || t.invalidInput;
         }
       }
 
       // ── Handle Error ──────────────────────────────────────────────────────
       if (errorMsg) {
         setVoiceError(errorMsg);
-        // Use a short delay before speaking error to ensure user has finished
         setTimeout(async () => {
           await speakText(errorMsg, language);
-          // Wait for user to digest, then retry the prompt
-          setTimeout(() => triggerFieldPrompt(currentFieldIndex), 1200);
+          setTimeout(() => triggerFieldPrompt(activeIndex), 1200);
         }, 300);
         return;
       }
@@ -160,16 +157,20 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
       setFormData(prev => ({ ...prev, [fieldId]: processedValue }));
       setVoiceError(null);
 
+      // Stop any ongoing speech to avoid replaying previous prompts
+      stopSpeaking();
+
+      const nextIndex = activeIndex + 1;
       setTimeout(() => {
-        if (currentFieldIndex < fields.length - 1) {
-          setCurrentFieldIndex(i => i + 1);
+        if (nextIndex < fields.length) {
+          setCurrentFieldIndex(nextIndex);
         } else {
           setIsReviewing(true);
         }
       }, 800);
     },
     onRetry: () => {
-      triggerFieldPrompt(currentFieldIndex);
+      triggerFieldPrompt(currentFieldIndexRef.current);
     },
     onError: (err: string) => {
       setVoiceError((t as any).micError || "Microphone access denied. Please check site permissions.");
@@ -820,7 +821,7 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                   ) : (
                     <>
                       <Input
-                        type={currentField?.type || 'text'}
+                        type={currentField?.type === 'date' && formData[currentField?.id] && !/^\d{4}-\d{2}-\d{2}$/.test(formData[currentField?.id]) ? 'text' : (currentField?.type || 'text')}
                         value={formData[currentField?.id] || ''}
                         onChange={(e) => {
                           let newValue = e.target.value;
@@ -882,25 +883,31 @@ const VoiceFormComponent = ({ service, userEmail, language = 'en-IN', selectedLo
                 </div>
               </div>
 
+              {/* Live interim + confirmation box */}
+              {(autoVoice.state.interim ||
+                autoVoice.state.phase === 'confirming' ||
+                autoVoice.state.phase === 'confirm_listen') && (
+                <div className="mt-3 px-1 space-y-2">
 
-
-
-
-
-
-              {/* Live interim transcript — shown unobtrusively below the input */}
-              {(autoVoice.state.interim || autoVoice.state.phase === 'confirm_listen') && (
-                <div className="mt-2 px-1">
-                  {autoVoice.state.interim && (
-                    <p className="text-xs text-neutral-400 italic">
-                      🎤 {autoVoice.state.interim}…
-                    </p>
+                  {/* Live transcript while speaking */}
+                  {autoVoice.state.interim && autoVoice.state.phase !== 'confirming' && autoVoice.state.phase !== 'confirm_listen' && (
+                    <p className="text-xs text-neutral-400 italic">🎙️ {autoVoice.state.interim}…</p>
                   )}
-                  {autoVoice.state.phase === 'confirm_listen' && (
-                    <p className="text-xs text-cyan-400 font-medium">
-                      Say <span className="font-bold">YES</span> to confirm or <span className="font-bold">NO</span> to retry
-                    </p>
+
+                  {/* Detected value — shown during confirm phases */}
+                  {(autoVoice.state.phase === 'confirming' || autoVoice.state.phase === 'confirm_listen') && autoVoice.state.pendingValue && (
+                    <div className="bg-neutral-900 border-2 border-cyan-500/60 rounded-xl px-5 py-4">
+                      <p className="text-xs font-semibold text-cyan-400 uppercase tracking-widest mb-2">{t.captured}</p>
+                      <p className="text-2xl font-bold text-white leading-tight">{autoVoice.state.pendingValue}</p>
+                      {autoVoice.state.phase === 'confirm_listen' && (
+                        <p className="text-sm text-neutral-400 mt-3">🎙️ {t.sayYesOrNo}</p>
+                      )}
+                      {autoVoice.state.phase === 'confirming' && (
+                        <p className="text-sm text-cyan-300 mt-3 animate-pulse">🔊 {t.processing || 'Processing…'}</p>
+                      )}
+                    </div>
                   )}
+
                 </div>
               )}
 

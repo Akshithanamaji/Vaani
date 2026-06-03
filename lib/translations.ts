@@ -114,6 +114,9 @@ export interface TranslationKeys {
     slow: string;
     normal: string;
     fast: string;
+    confirmPrompt: string;
+    captured: string;
+    sayYesOrNo: string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -230,6 +233,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'Is that correct?',
+        captured: 'Captured',
+        sayYesOrNo: 'Say YES to confirm or NO to retry',
     },
     hi: {
         title: 'वॉयस-पावर्ड सरकारी फॉर्म',
@@ -344,6 +350,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'धीमा',
         normal: 'सामान्य',
         fast: 'तेज़',
+        confirmPrompt: 'क्या यह सही है?',
+        captured: 'जो सुना गया',
+        sayYesOrNo: 'हाँ कहें — पुष्टि करें, या नहीं — फिर से बोलें',
     },
     te: {
         title: 'వాయిస్-ఆధారిత ప్రభుత్వ ఫారమ్‌లు',
@@ -458,6 +467,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'ఇది సరైనదేనా?',
+        captured: 'వినబడింది',
+        sayYesOrNo: 'అవును అని చెప్పండి — నిర్ధారించండి, లేదా కాదు — మళ్ళీ చెప్పండి',
     },
     kn: {
         title: 'ವಾಯಿಸ್-ಆಧಾರಿತ ಸರ್ಕಾರಿ ಫಾರ್ಮ್‌ಗಳು',
@@ -572,6 +584,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'ಇದು ಸರಿಯಾಗಿದೆಯೇ?',
+        captured: 'ಕೇಳಿದ್ದು',
+        sayYesOrNo: 'ಹೌದು ಎಂದು ಹೇಳಿ — ದೃಢಪಡಿಸಿ, ಅಥವಾ ಇಲ್ಲ — ಮತ್ತೆ ಹೇಳಿ',
     },
     ta: {
         title: 'குரல் சக்தியால் கட்டப்பட்ட அரசாங்க ஆவணங்கள்',
@@ -686,6 +701,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'இது சரியா?',
+        captured: 'கேட்கப்பட்டது',
+        sayYesOrNo: 'ஆம் என்று சொல்லுங்கள் — உறுதிப்படுத்தவும், இல்லையெனில் இல்லை — மீண்டும் சொல்லுங்கள்',
     },
     ml: {
         title: 'കണ്ഠസ്വര ആധാരിത സരകാരി ഫോമുകൾ',
@@ -800,6 +818,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'ഇത് ശരിയാണോ?',
+        captured: 'കേട്ടത്',
+        sayYesOrNo: 'അതെ എന്ന് പറയൂ — ഉറപ്പിക്കൂ, അല്ലെങ്കിൽ ഇല്ല — വീണ്ടും പറയൂ',
     },
     mr: {
         title: 'वॉयस-पावर्ड सरकारी फॉर्म',
@@ -914,6 +935,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'हे बरोबर आहे का?',
+        captured: 'ऐकलेले',
+        sayYesOrNo: 'होय म्हणा — पुष्टी करा, किंवा नाही — पुन्हा सांगा',
     },
     bn: {
         title: 'বাণী AI পোর্টাল',
@@ -1028,6 +1052,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'এটা কি সঠিক?',
+        captured: 'শোনা গেছে',
+        sayYesOrNo: 'হ্যাঁ বলুন — নিশ্চিত করুন, অথবা না — আবার বলুন',
     },
     gu: {
         title: 'વાણી AI પોર્ટલ',
@@ -1142,6 +1169,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'શું આ સાચું છે?',
+        captured: 'સાંભળ્યું',
+        sayYesOrNo: 'હા કહો — પુષ્ટિ કરો, અથવા ના — ફરીથી કહો',
     },
     or: {
         title: 'ବାଣୀ AI ପୋର୍ଟାଲ୍',
@@ -1256,6 +1286,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'ଏହା ସଠିକ୍ କି?',
+        captured: 'ଶୁଣାଗଲା',
+        sayYesOrNo: 'ହଁ କୁହନ୍ତୁ — ନିଶ୍ଚିତ କରନ୍ତୁ, ଅଥବା ନା — ପୁଣି କୁହନ୍ତୁ',
     },
     pa: {
         title: 'ਵਾਣੀ AI ਪੋਰਟਲ',
@@ -1370,6 +1403,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'ਕੀ ਇਹ ਸਹੀ ਹੈ?',
+        captured: 'ਸੁਣਿਆ ਗਿਆ',
+        sayYesOrNo: 'ਹਾਂ ਕਹੋ — ਪੁਸ਼ਟੀ ਕਰੋ, ਨਹੀਂ ਤਾਂ ਨਹੀਂ — ਫੇਰ ਕਹੋ',
     },
     ur: {
         title: 'وانی AI پورٹل',
@@ -1484,6 +1520,9 @@ export const translations: Record<string, TranslationKeys> = {
         slow: 'Slow',
         normal: 'Normal',
         fast: 'Fast',
+        confirmPrompt: 'کیا یہ درست ہے؟',
+        captured: 'سنا گیا',
+        sayYesOrNo: 'ہاں کہیں — تصدیق کریں, یا نہیں — دوبارہ کہیں',
     }
 };
 

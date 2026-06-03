@@ -715,8 +715,8 @@ const ServiceSelectorComponent = ({ onSelectService, language, onServiceSelected
                   <div className="w-12 h-12 rounded-xl bg-neutral-800 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                     {translatedService.icon}
                   </div>
-                  <div>
-                    <h3 className="font-medium text-white text-sm leading-tight group-hover:text-cyan-400 transition-colors">
+                  <div className="h-10 flex items-center justify-center w-full">
+                    <h3 className="font-medium text-white text-sm leading-tight group-hover:text-cyan-400 transition-colors line-clamp-2">
                       {translatedService.name}
                     </h3>
                   </div>

@@ -110,8 +110,8 @@ export const UserSidebar = ({
                     setNotifications(notifData.notifications);
                 }
             } catch (error: any) {
-                // Silently ignore network suspension/abort errors
-                if (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('suspended')) {
+                // Silently ignore network suspension/abort errors, including "Failed to fetch" (ERR_NETWORK_CHANGED)
+                if (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('suspended') || error.message?.includes('Failed to fetch')) {
                     return;
                 }
                 // Only log unexpected errors
@@ -158,7 +158,7 @@ export const UserSidebar = ({
                 }
             } catch (error: any) {
                 // Silently ignore network suspension/abort errors
-                if (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('suspended')) {
+                if (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('suspended') || error.message?.includes('Failed to fetch')) {
                     return;
                 }
                 if (isMounted) {
